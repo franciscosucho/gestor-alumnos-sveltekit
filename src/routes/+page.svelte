@@ -2,17 +2,16 @@
     //Importacion de componentes
     import Textprincipal from "$lib/Main/TextPrincipal.svelte";
     import ContCard from "$lib/Main/ContCard.svelte";
+    import ContNavegacion from "$lib/Main/Navegacion/ContNavegacion.svelte";
 </script>
 
 <main>
     <Textprincipal></Textprincipal>
     <ContCard></ContCard>
+    <ContNavegacion></ContNavegacion>
 </main>
 
 <style>
-    body {
-        overflow-x: hidden;
-    }
     main {
         min-height: 100%;
         height: auto;
