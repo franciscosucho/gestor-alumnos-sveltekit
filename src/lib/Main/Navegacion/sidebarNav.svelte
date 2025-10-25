@@ -1,107 +1,133 @@
 <script lang="ts">
-    // Importa el store de 'page' para identificar la ruta actual y aplicar la clase 'active'
-    import { page } from '$app/stores';
-
+    import { page } from "$app/stores";
+    import CardNavegacion from "./CardNavegacion.svelte";
     const navItems = [
-        { name: 'Lista de Alumnos', icon: 'fas fa-user-friends', link: '/alumnos/lista' },
-        { name: 'Agregar Alumno', icon: 'fas fa-plus', link: '/alumnos/agregar' },
-        { name: 'Gestión de Profesores', icon: 'fas fa-graduation-cap', link: '/profesores' },
-        { name: 'Cursos y Materias', icon: 'fas fa-book-open', link: '/cursos' },
-        { name: 'Control de Asistencia', icon: 'fas fa-calendar-alt', link: '/asistencia' },
-        { name: 'Reportes de Desempeño', icon: 'fas fa-chart-bar', link: '/reportes' },
-        { name: 'Historial Académico', icon: 'fas fa-history', link: '/historial' },
+        {
+            name: "Lista de Alumnos",
+            icon: "fas fa-user-friends",
+            link: "/alumnos/lista",
+        },
+        {
+            name: "Agregar Alumno",
+            icon: "fas fa-plus",
+            link: "/alumnos/agregar",
+        },
+        {
+            name: "Cursos y Materias",
+            icon: "fas fa-book-open",
+            link: "/cursos",
+        },
+        {
+            name: "Reportes de Desempeño",
+            icon: "fas fa-chart-bar",
+            link: "/reportes",
+        },
+        {
+            name: "Historial Académico",
+            icon: "fas fa-history",
+            link: "/historial",
+        },
     ];
+
+    const colors = {
+        paletaPastel: [
+            {
+                nombre: "Azul Bebé (Pale Blue)",
+                codigoHex: "#E6EAFE",
+            },
+            {
+                nombre: "Lavanda (Lavender)",
+                codigoHex: "#E6E6FA",
+            },
+            {
+                nombre: "Menta (Mint Cream)",
+                codigoHex: "#F5FFFA",
+            },
+            {
+                nombre: "Rosa Claro (Light Pink)",
+                codigoHex: "#FFDDE2",
+            },
+            {
+                nombre: "Melocotón (Peach Puff)",
+                codigoHex: "#FFEDD5",
+            },
+            {
+                nombre: "Verde Pálido (Pale Green)",
+                codigoHex: "#E0FFEE",
+            },
+        ],
+        sugerenciasEstilo: {
+            backgrounds: {
+                default: "#F5F5F5",
+                alternativo: "#F0FFF0",
+            },
+            border: {
+                suave: "#DCDCDC",
+                estandar: "#C0C0C0",
+            },
+            text: {
+                principal: "#333333",
+                secundario: "#6B7280",
+            },
+            ejemploCombinacion: {
+                backgroundColor: "#E6EAFE",
+                borderColor: "#DCDCDC",
+                textColor: "#333333",
+            },
+        },
+    };
 </script>
 
-<nav class="sidebar-nav-container">
-    <h2 class="nav-title">Navegación</h2>
-    <ul class="nav-list">
-        {#each navItems as item}
-            <li class="nav-item">
-                <a 
-                    href={item.link} 
-                    class:active={($page.url.pathname === item.link || ($page.url.pathname.startsWith(item.link + '/') && item.link !== '/'))}
-                >
-                    <i class="{item.icon}"></i>
-                    <span>{item.name}</span>
-                </a>
-            </li>
+<div class="card-nav-container">
+    <h2 class="nav-title">Panel de Acceso Rápido</h2>
+
+    <div class="card-grid">
+        {#each navItems as item, index}
+            <CardNavegacion {...item} color={colors[index]}></CardNavegacion>
         {/each}
-    </ul>
-</nav>
+    </div>
+</div>
 
 <style>
     :root {
-        --nav-bg: #ffffff;
-        --nav-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-        --nav-radius: 12px;
-        --nav-padding-x: 24px; /* Padding horizontal para el título */
-        --item-padding-x: 24px; /* Padding horizontal para los items de la lista */
-        --item-padding-y: 12px; /* Padding vertical para los items */
+        --card-bg: #ffffff;
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --card-hover-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        --card-radius: 12px;
+        --card-padding: 20px;
         --text-color: #333333;
         --text-color-secondary: #666666;
-        --active-bg: #2e86de; 
+        --active-bg: #2e86de;
         --active-text: #ffffff;
-        --icon-color-default: #666666; /* Gris para iconos no activos */
-        --font-family-sans: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        --icon-color-default: #2e86de;
+        --font-family-sans: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    .sidebar-nav-container {
-        background-color: var(--nav-bg);
-        border-radius: var(--nav-radius);
-        box-shadow: var(--nav-shadow);
-        padding: 24px 0; /* Padding superior e inferior, el horizontal se maneja en los elementos internos */
-        width: 250px; 
-        min-height: 100%;
+    .card-nav-container {
+        padding: 30px;
+        background-color: #f5f7f9;
+        border-radius: var(--card-radius);
         font-family: var(--font-family-sans);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        width: 100%;
     }
 
     .nav-title {
-        font-size: 1.2rem;
-        font-weight: 600;
+        font-size: 1.5rem;
+        font-weight: 700;
         color: var(--text-color);
-        margin: 0 0 15px var(--nav-padding-x);
-        padding: 0;
-    }
-
-    .nav-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .nav-item a {
-        display: flex;
-        align-items: center;
-        padding: var(--item-padding-y) var(--item-padding-x);
-        text-decoration: none;
-        color: var(--text-color-secondary);
-        font-size: 1rem;
-        transition: background-color 0.2s, color 0.2s;
-        gap: 15px; 
-        font-weight: 500;
-        border-radius: 0; 
-    }
-
-    .nav-item a.active {
-        background-color: var(--active-bg);
-        color: var(--active-text);
-        font-weight: 600;
-    }
-    
-    .nav-item a:not(.active):hover {
-        background-color: #f0f4f8; /* Un gris muy sutil para el hover */
-        color: var(--text-color);
-    }
-
-    .nav-item i {
-        font-size: 1.1em;
-        width: 20px;
+        margin-bottom: 25px;
         text-align: center;
-        color: var(--icon-color-default); /* Color por defecto de los íconos */
     }
-    
-    .nav-item a.active i {
-        color: var(--active-text);
+
+    .card-grid {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: auto;
+        gap: 20px;
     }
 </style>
