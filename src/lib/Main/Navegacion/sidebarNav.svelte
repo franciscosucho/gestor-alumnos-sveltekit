@@ -18,14 +18,9 @@
             link: "/cursos",
         },
         {
-            name: "Reportes de Desempeño",
-            icon: "fas fa-chart-bar",
-            link: "/reportes",
-        },
-        {
             name: "Historial Académico",
             icon: "fas fa-history",
-            link: "/historial",
+            link: "alumnos/historial",
         },
     ];
 
@@ -82,8 +77,8 @@
     <h2 class="nav-title">Panel de Acceso Rápido</h2>
 
     <div class="card-grid">
-        {#each navItems as item, index}
-            <CardNavegacion {...item} color={colors[index]}></CardNavegacion>
+        {#each navItems as item}
+            <CardNavegacion {...item}></CardNavegacion>
         {/each}
     </div>
 </div>
