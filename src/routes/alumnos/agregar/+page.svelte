@@ -11,12 +11,10 @@
         curso: "",
     };
 
-    const cursos = ["1° A", "1° B", "2° A", "3° A"];
-
-    function handleSubmit() {
-        console.log("Datos a enviar:", alumno);
-        alert(`Alumno ${alumno.nombres} registrado con éxito (Simulado)!`);
-    }
+    const cursos = [
+        { id: "332bf633-4e46-44b3-8e3d-bfb4063797d8", nombre: "7°2°" },
+        { id: "c7f56a5-718a-47f0...", nombre: "7°1°" },
+    ];
 </script>
 
 <div class="page-container">
@@ -26,7 +24,7 @@
     </div>
 
     <Card wide={true}>
-        <form on:submit|preventDefault={handleSubmit}>
+        <form method="POST">
             <div class="form-row">
                 <div class="input-group">
                     <input
@@ -95,12 +93,13 @@
             <div class="form-row single-input">
                 <div class="input-group">
                     <select id="curso" bind:value={alumno.curso} required>
-                        <option value="" disabled selected></option>
+                        <option value="" disabled selected
+                            >Seleccionar curso</option
+                        >
                         {#each cursos as curso}
-                            <option value={curso}>{curso}</option>
+                            <option value={curso.id}>{curso.nombre}</option>
                         {/each}
                     </select>
-                    <label for="curso">Seleccione el curso inicial</label>
                 </div>
             </div>
 
