@@ -3,10 +3,11 @@
     import Navbar from "./Navbar.svelte";
 </script>
 
-<div class="contIcon">
+<!-- svelte-ignore a11y_missing_attribute -->
+<a class="contIcon" href="/">
     <h3 class="iconApp">SA</h3>
     <h2 class="nameApp">StudentApp</h2>
-</div>
+</a>
 
 <style>
     .contIcon {
@@ -14,6 +15,7 @@
         justify-content: center;
         align-items: center;
         height: 60%;
+        text-decoration: none;
         gap: 10px;
         width: auto;
         font-family: Arial, Helvetica, sans-serif ;

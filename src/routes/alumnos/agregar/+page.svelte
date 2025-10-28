@@ -9,6 +9,7 @@
         telefono: "",
         fechaNacimiento: "",
         curso: "",
+        domicilio: ""
     };
 
     const cursos = [
@@ -30,15 +31,18 @@
                     <input
                         type="text"
                         id="nombres"
+                        name="nombres"
                         bind:value={alumno.nombres}
                         required
                     />
                     <label for="nombres">Nombre(s)</label>
                 </div>
+
                 <div class="input-group">
                     <input
                         type="text"
                         id="apellidos"
+                        name="apellidos"
                         bind:value={alumno.apellidos}
                         required
                     />
@@ -51,15 +55,18 @@
                     <input
                         type="number"
                         id="dni"
+                        name="dni"
                         bind:value={alumno.dni}
                         required
                     />
                     <label for="dni">DNI / Identificación</label>
                 </div>
+
                 <div class="input-group">
                     <input
                         type="email"
                         id="email"
+                        name="email"
                         bind:value={alumno.email}
                         required
                     />
@@ -72,27 +79,32 @@
                     <input
                         type="tel"
                         id="telefono"
+                        name="telefono"
                         bind:value={alumno.telefono}
                     />
-                    <label for="telefono">Teléfono</label>
+                    <label for="telefono">Teléfono del padre/madre</label>
                 </div>
+
                 <div class="input-group date-picker-group">
                     <input
                         id="fechaNacimiento"
+                        name="fechaNacimiento"
                         type="date"
                         bind:value={alumno.fechaNacimiento}
                         required
                     />
                     <label for="fechaNacimiento">Fecha de Nacimiento</label>
-                    <div class="icon-suffix">
-                        <i class="fas fa-calendar-alt"></i>
-                    </div>
                 </div>
             </div>
 
             <div class="form-row single-input">
                 <div class="input-group">
-                    <select id="curso" bind:value={alumno.curso} required>
+                    <select
+                        id="curso"
+                        name="curso"
+                        bind:value={alumno.curso}
+                        required
+                    >
                         <option value="" disabled selected
                             >Seleccionar curso</option
                         >
@@ -100,6 +112,17 @@
                             <option value={curso.id}>{curso.nombre}</option>
                         {/each}
                     </select>
+                </div>
+
+                <div class="input-group date-picker-group">
+                    <input
+                        id="domicilio"
+                        name="domicilio"
+                        type="text"
+                        bind:value={alumno.domicilio}
+                        required
+                    />
+                    <label for="fechaNacimiento">Domicilio del alumno </label>
                 </div>
             </div>
 
