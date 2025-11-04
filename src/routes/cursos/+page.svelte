@@ -3,7 +3,10 @@
     import type { Curso, CursoData } from "$lib/types/types";
     import { page } from "$app/stores";
     // Desestructurás los cursos
-    let cursos: CursoData = $page.data.cursos;
+    let cursosData: CursoData = $page.data.cursos;
+    let cursos: Curso[] = cursosData.cursos;
+    let cursoSeleccionado: Curso | null = null;
+
     let materias: any = {
         1: [
             { id: 1, nombre: "Matemática", profesor: "Prof. García" },
@@ -28,18 +31,17 @@
     let nuevoCurso = { nombre: "", turno: "" };
     let nuevaMateria = { nombre: "", profesor: "" };
 
-    function seleccionarCurso(curso: Curso) {
-        cursos.curso_seleccionado = curso;
-    }
-
     function cursosFiltrados() {
         return cursos.filter((c: Curso) =>
             c.nombre.toLowerCase().includes(filtroCurso.toLowerCase()),
         );
     }
-
+    function seleccionarCurso(curso: Curso) {
+        cursoSeleccionado = curso;
+    }
     function materiasFiltradas() {
-        return materias[cursos.curso_seleccionado?.id].filter((m: any) =>
+        if (!cursoSeleccionado || !materias[cursoSeleccionado.id]) return [];
+        return materias[cursoSeleccionado.id].filter((m: any) =>
             m.nombre.toLowerCase().includes(filtroMateria.toLowerCase()),
         );
     }
@@ -111,7 +113,7 @@
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                 <li
-                    class:selected={curso.id === curso.curso_seleccionado.id}
+                    class:selected={curso.id === cursosData.curso_seleccionado?.id}
                     on:click={() => seleccionarCurso(curso)}
                 >
                     <div>
@@ -126,7 +128,7 @@
     <!-- Panel principal -->
     <main class="panel-materias">
         <header class="encabezado">
-            <h2>Materias de {cursos.curso_seleccionado?.nombre}</h2>
+            <h2>Materias de {cursosData.curso_seleccionado?.nombre}</h2>
             <div class="acciones-header">
                 <input
                     type="text"

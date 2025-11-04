@@ -1,285 +1,466 @@
 <script lang="ts">
-    let alumnos = [
-        {
-            id: 1,
-            nombre: "Juan Pérez",
-            curso: "2°A",
-            dni: "42158963",
-            promedio: 8.4,
-        },
-        {
-            id: 2,
-            nombre: "Lucía Gómez",
-            curso: "3°B",
-            dni: "41785624",
-            promedio: 7.9,
-        },
-        {
-            id: 3,
-            nombre: "Martín Torres",
-            curso: "1°C",
-            dni: "43987512",
-            promedio: 9.1,
-        },
-        {
-            id: 4,
-            nombre: "Carla López",
-            curso: "2°A",
-            dni: "42865321",
-            promedio: 6.8,
-        },
-        {
-            id: 5,
-            nombre: "Pedro García",
-            curso: "4°A",
-            dni: "40125633",
-            promedio: 7.3,
-        },
-        {
-            id: 6,
-            nombre: "Sofía Díaz",
-            curso: "5°B",
-            dni: "41234567",
-            promedio: 8.9,
-        },
-        {
-            id: 7,
-            nombre: "Federico Ríos",
-            curso: "3°A",
-            dni: "42900122",
-            promedio: 7.6,
-        },
-        {
-            id: 8,
-            nombre: "Ana Torres",
-            curso: "1°B",
-            dni: "43789412",
-            promedio: 9.3,
-        },
-        {
-            id: 9,
-            nombre: "Nicolás Fernández",
-            curso: "2°B",
-            dni: "41874599",
-            promedio: 6.5,
-        },
-        {
-            id: 10,
-            nombre: "Valentina Silva",
-            curso: "4°C",
-            dni: "42236514",
-            promedio: 8.2,
-        },
-    ];
+	import { page } from "$app/stores";
+	import { invalidate, goto } from "$app/navigation"; 
 
-    let busqueda = "";
-    let paginaActual = 1;
-    const alumnosPorPagina = 5;
+	
+	interface Alumno {
+		id: string; // Cambiado a string (UUID)
+		nombre: string;
+		apellido: string | null;
+		dni: number;
+		curso: { nombre: string } | null;
+		
+	}
 
-    // Filtrado
-    $: alumnosFiltrados = alumnos.filter(
-        (a) =>
-            a.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-            a.curso.toLowerCase().includes(busqueda.toLowerCase()) ||
-            a.dni.includes(busqueda),
-    );
+	
+	let data = $page.data as { alumnos: Alumno[] };
+    $: alumnos = data.alumnos; 
 
-    // Paginación
-    $: totalPaginas = Math.ceil(alumnosFiltrados.length / alumnosPorPagina);
-    $: alumnosPaginados = alumnosFiltrados.slice(
-        (paginaActual - 1) * alumnosPorPagina,
-        paginaActual * alumnosPorPagina,
-    );
+	let busqueda = "";
+	let paginaActual = 1;
+	const alumnosPorPagina = 5;
 
-    function cambiarPagina(nuevaPagina: number) {
-        if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
-            paginaActual = nuevaPagina;
-        }
+	
+	let errorMensaje: string | null = null;
+	let mostrarConfirmacionId: string | null = null; 
+
+	// --- Lógica de Edición (Redirección) ---
+    function editarAlumno(id: string) {
+        
+        goto(`/alumnos/editar/${id}`);
     }
 
-    function eliminarAlumno(id: number) {
-        alumnos = alumnos.filter((a) => a.id !== id);
-    }
+	// --- Lógica de Eliminación con Fetch (Corregida para el JSON de SvelteKit) ---
+	async function eliminarAlumno(id: string) {
+		// Cierra la confirmación de inmediato
+		mostrarConfirmacionId = null;
+
+		const formData = new FormData();
+		formData.append("id", id);
+
+        // Utilizamos el endpoint de acción '?/eliminar'
+		const res = await fetch("?/eliminar", {
+			method: "POST",
+			body: formData,
+		});
+
+		// Intentamos parsear el JSON. Si falla o no hay cuerpo, usamos un objeto de error por defecto.
+		const result = res.status !== 204
+			? await res.json().catch(() => ({ status: res.status, type: 'error', message: 'Respuesta inválida del servidor.' }))
+			: { status: 200, type: "success" };
+            
+		console.log("Respuesta de eliminación:", result);
+
+		// *** CONDICIÓN CORREGIDA: Verificamos el estado HTTP o el tipo de éxito en el resultado JSON ***
+		if (res.ok || result.type === "success") { 
+			// 1. REACTIVIDAD INMEDIATA: Eliminamos el alumno de la lista local 'alumnos'.
+            // Esto actualiza la tabla visible de inmediato gracias a la reactividad de Svelte.
+			alumnos = alumnos.filter((a) => a.id !== id);
+
+			// 2. SINCRONIZACIÓN DE DATOS: Forzamos la recarga de los datos del servidor (Load Function)
+			// Esto asegura que si el servidor devuelve menos datos, SvelteKit sincronice 'alumnos' con la DB.
+			await invalidate("alumnos");
+
+			errorMensaje = null; // Limpiar cualquier error anterior
+		} else {
+			// Manejar errores de la acción o del servidor
+			const msg =
+				result.message ||
+				"Ocurrió un error desconocido al eliminar el alumno.";
+			console.error("Error al eliminar:", msg);
+			errorMensaje = msg; // Mostrar error en la UI
+		}
+	}
+
+	// --- Filtrado y Paginación (Sin cambios) ---
+	$: alumnosFiltrados = alumnos.filter(
+		(a) =>
+			a.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+			a.apellido?.toLowerCase().includes(busqueda.toLowerCase()) ||
+			a.dni.toString().includes(busqueda),
+	);
+
+	$: totalPaginas = Math.ceil(alumnosFiltrados.length / alumnosPorPagina);
+	$: alumnosPaginados = alumnosFiltrados.slice(
+		(paginaActual - 1) * alumnosPorPagina,
+		paginaActual * alumnosPorPagina,
+	);
+
+	function cambiarPagina(nuevaPagina: number) {
+		if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
+			paginaActual = nuevaPagina;
+		}
+	}
 </script>
 
 <div class="contenedor-lista">
-    <h2>Lista de Alumnos</h2>
+	<h2>Lista de Alumnos</h2>
 
-    <div class="buscador">
-        <input
-            type="text"
-            placeholder="Buscar por nombre, curso o DNI..."
-            bind:value={busqueda}
-        />
-    </div>
+	<!-- Mensaje de Error (Alternativa a alert()) -->
+	{#if errorMensaje}
+		<div class="mensaje-error">
+			{errorMensaje}
+			<button on:click={() => (errorMensaje = null)} class="cerrar-error"
+				>✖</button
+			>
+		</div>
+	{/if}
 
-    <table class="tabla-alumnos">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Curso</th>
-                <th>DNI</th>
-                <th>Promedio</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {#if alumnosPaginados.length > 0}
-                {#each alumnosPaginados as alumno}
-                    <tr>
-                        <td>{alumno.id}</td>
-                        <td>{alumno.nombre}</td>
-                        <td>{alumno.curso}</td>
-                        <td>{alumno.dni}</td>
-                        <td>{alumno.promedio}</td>
-                        <td class="acciones">
-                            <button class="editar">Editar</button>
-                            <button
-                                class="eliminar"
-                                on:click={() => eliminarAlumno(alumno.id)}
+	<div class="buscador">
+		<input
+			type="text"
+			placeholder="Buscar por nombre, apellido o DNI..."
+			bind:value={busqueda}
+		/>
+	</div>
+
+	<table class="tabla-alumnos">
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>Nombre</th>
+				<th>Apellido</th>
+				<th>DNI</th>
+				<th>Curso</th>
+				<th>Acciones</th>
+			</tr>
+		</thead>
+		<tbody>
+			{#if alumnosPaginados.length > 0}
+				{#each alumnosPaginados as alumno (alumno.id)}
+					<tr>
+						<td>{alumno.id}</td>
+						<td>{alumno.nombre}</td>
+						<td>{alumno.apellido}</td>
+						<td>{alumno.dni}</td>
+						<td>{alumno.curso?.nombre || "Sin curso"}</td>
+						<td class="acciones">
+							<button 
+                                class="editar"
+                                on:click={() => editarAlumno(alumno.id)} 
                             >
-                                Eliminar
+                                Editar
                             </button>
-                        </td>
-                    </tr>
-                {/each}
-            {:else}
-                <tr>
-                    <td colspan="6" class="no-encontrado"
-                        >No se encontraron alumnos.</td
-                    >
-                </tr>
-            {/if}
-        </tbody>
-    </table>
+							<button
+								class="eliminar"
+								on:click={() =>
+									(mostrarConfirmacionId = alumno.id)}
+							>
+								Eliminar
+							</button>
 
-    <div class="paginacion">
-        <button
-            on:click={() => cambiarPagina(paginaActual - 1)}
-            disabled={paginaActual === 1}
-        >
-            Anterior
-        </button>
-        <span>Página {paginaActual} de {totalPaginas}</span>
-        <button
-            on:click={() => cambiarPagina(paginaActual + 1)}
-            disabled={paginaActual === totalPaginas}
-        >
-            Siguiente
-        </button>
-    </div>
+							<!-- Modal de Confirmación en línea -->
+							{#if mostrarConfirmacionId === alumno.id}
+								<div class="confirmacion-popup">
+									<p>
+										¿Seguro que quieres eliminar a {alumno.nombre}?
+									</p>
+									<button
+										class="confirmar-si"
+										on:click={() =>
+											eliminarAlumno(alumno.id)}
+									>
+										Sí
+									</button>
+									<button
+										class="confirmar-no"
+										on:click={() =>
+											(mostrarConfirmacionId = null)}
+									>
+										No
+									</button>
+								</div>
+							{/if}
+						</td>
+					</tr>
+				{/each}
+			{:else}
+				<tr>
+					<td colspan="6" class="no-encontrado"
+						>No se encontraron alumnos.</td
+					>
+				</tr>
+			{/if}
+		</tbody>
+	</table>
+
+	<div class="paginacion">
+		<button
+			on:click={() => cambiarPagina(paginaActual - 1)}
+			disabled={paginaActual === 1}
+		>
+			Anterior
+		</button>
+		<span>Página {paginaActual} de {totalPaginas}</span>
+		<button
+			on:click={() => cambiarPagina(paginaActual + 1)}
+			disabled={paginaActual === totalPaginas}
+		>
+			Siguiente
+		</button>
+	</div>
 </div>
 
 <style>
-        * {
-        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    .contenedor-lista {
-        background: #fff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        width: 90%;
-        margin: 20px auto;
-    }
+    /* Estilos copiados del original */
+	* {
+		font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		box-sizing: border-box;
+	}
 
-    h2 {
-        margin-bottom: 15px;
-        color: #222;
-        font-size: 1.5rem;
-    }
+	body {
+		background-color: #f4f7f6;
+		margin: 0;
+		padding: 0;
+	}
 
-    .buscador {
-        margin-bottom: 15px;
-    }
+	.contenedor-lista {
+		background: #fff;
+		padding: 30px;
+		border-radius: 12px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		width: 95%;
+		max-width: 1200px;
+		margin: 30px auto;
+	}
 
-    .buscador input {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        font-size: 1rem;
-    }
+	h2,
+	h3 {
+		color: #2c3e50;
+		margin-bottom: 20px;
+		border-bottom: 2px solid #ecf0f1;
+		padding-bottom: 10px;
+		font-weight: 600;
+	}
 
-    .tabla-alumnos {
-        width: 100%;
-        border-collapse: collapse;
-    }
+	.buscador {
+		margin-bottom: 20px;
+	}
 
-    .tabla-alumnos th,
-    .tabla-alumnos td {
-        padding: 10px 15px;
-        text-align: left;
-        border-bottom: 1px solid #eaeaea;
-    }
+	.buscador input {
+		width: 100%;
+		padding: 12px 15px;
+		border: 1px solid #bdc3c7;
+		border-radius: 8px;
+		font-size: 1rem;
+		transition:
+			border-color 0.3s,
+			box-shadow 0.3s;
+	}
 
-    .tabla-alumnos th {
-        background-color: #f5f6fa;
-        color: #333;
-        font-weight: 600;
-    }
+	.buscador input:focus {
+		border-color: #3498db;
+		box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+		outline: none;
+	}
 
-    .tabla-alumnos tr:hover {
-        background-color: #f9f9f9;
-    }
+	.tabla-alumnos {
+		width: 100%;
+		height: auto;
+		border-collapse: separate;
+		border-spacing: 0;
+		margin-bottom: 15px;
+		border: 1px solid #ddd;
+		border-radius: 8px;
+		overflow: hidden;
+	}
 
-    .acciones button {
-        margin-right: 5px;
-        padding: 5px 10px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.9rem;
-    }
+	.tabla-alumnos th,
+	.tabla-alumnos td {
+		padding: 12px 15px;
+		text-align: left;
+		border: none;
+		position: relative; /* Necesario para el popup de confirmación */
+	}
 
-    .editar {
-        background-color: #007bff;
-        color: white;
-    }
+	.tabla-alumnos th {
+		background-color: #f0f4f7;
+		color: #34495e;
+		font-weight: 700;
+		text-transform: uppercase;
+		font-size: 0.9rem;
+	}
 
-    .eliminar {
-        background-color: #dc3545;
-        color: white;
-    }
+	.tabla-alumnos tr {
+		border-bottom: 1px solid #eee;
+	}
 
-    .eliminar:hover {
-        background-color: #c82333;
-    }
+	.tabla-alumnos tr:last-child {
+		border-bottom: none;
+	}
 
-    .editar:hover {
-        background-color: #0056b3;
-    }
+	.tabla-alumnos tr:nth-child(even) {
+		background-color: #fcfcfc;
+	}
 
-    .no-encontrado {
-        text-align: center;
-        color: #999;
-        padding: 20px;
-    }
+	.tabla-alumnos tbody tr:hover {
+		background-color: #e8f6f8;
+		transition: background-color 0.2s;
+	}
 
-    .paginacion {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 15px;
-    }
+	.acciones {
+		white-space: nowrap;
+	}
 
-    .paginacion button {
-        padding: 8px 15px;
-        border: none;
-        background-color: #4caf50;
-        color: white;
-        border-radius: 5px;
-        cursor: pointer;
-    }
+	.acciones button {
+		margin-right: 8px;
+		padding: 8px 15px;
+		border: none;
+		border-radius: 6px;
+		cursor: pointer;
+		font-size: 0.9rem;
+		font-weight: 600;
+		transition: all 0.2s ease-in-out;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
 
-    .paginacion button:disabled {
-        background-color: #ccc;
-        cursor: not-allowed;
-    }
+	.editar {
+		background-color: #3498db;
+		color: white;
+	}
 
-    .paginacion span {
-        color: #333;
-        font-weight: 500;
-    }
+	.editar:hover {
+		background-color: #2980b9;
+		transform: translateY(-1px);
+	}
+
+	.eliminar {
+		background-color: #e74c3c;
+		color: white;
+	}
+
+	.eliminar:hover {
+		background-color: #c0392b;
+		transform: translateY(-1px);
+	}
+
+	.no-encontrado {
+		text-align: center;
+		color: #95a5a6;
+		padding: 20px;
+		font-style: italic;
+	}
+
+	.paginacion {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-top: 20px;
+		padding: 10px 0;
+		border-top: 1px solid #eee;
+	}
+
+	.paginacion button {
+		padding: 10px 18px;
+		border: none;
+		background-color: #2ecc71;
+		color: white;
+		border-radius: 6px;
+		cursor: pointer;
+		font-weight: 600;
+		transition: background-color 0.2s;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	.paginacion button:hover:not(:disabled) {
+		background-color: #27ae60;
+	}
+
+	.paginacion button:disabled {
+		background-color: #cccccc;
+		cursor: not-allowed;
+		box-shadow: none;
+	}
+
+	.paginacion span {
+		color: #34495e;
+		font-weight: 600;
+	}
+
+	/* --- Estilos para el Manejo de Errores y Confirmación --- */
+
+	.mensaje-error {
+		background-color: #f9dcdc;
+		color: #c0392b;
+		padding: 15px 20px;
+		border: 1px solid #e74c3c;
+		border-radius: 8px;
+		margin-bottom: 20px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-weight: 500;
+	}
+
+	.cerrar-error {
+		background: none;
+		border: none;
+		color: #c0392b;
+		font-size: 1.2rem;
+		cursor: pointer;
+		line-height: 1;
+		transition: transform 0.2s;
+	}
+
+	.cerrar-error:hover {
+		transform: rotate(90deg);
+	}
+
+	/* Popup de Confirmación (Alternativa a Modal completo) */
+	.confirmacion-popup {
+		/* 2. Posicionamiento fijo para que no se mueva con el scroll, o absoluto para que quede en la celda */
+		position: absolute;
+		z-index: 10; /* Z-index menor que antes, 10 es suficiente para estar sobre la tabla */
+
+		/* 3. Posicionamiento para centrarlo horizontalmente */
+		top: 50%;
+		left: 30%;
+		transform: translate(
+			-50%,
+			-50%
+		); /* Centra el elemento respecto a sí mismo */
+
+		/* 4. Estilos visuales */
+		background: #fff;
+		border: 2px solid #e74c3c; /* Borde más visible */
+		border-radius: 10px;
+		padding: 20px; /* Más espacio interno */
+		box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); /* Sombra más fuerte */
+
+		min-width: 280px;
+		text-align: center;
+
+		/* 5. Asegura que el popup no se salga del borde de la pantalla */
+		max-width: 90vw;
+	}
+
+	.confirmacion-popup p {
+		margin-bottom: 15px;
+		color: #34495e;
+		font-weight: 500;
+	}
+
+	.confirmacion-popup button {
+		margin: 0 5px; /* Separación entre botones */
+		/* Usamos los estilos existentes para los botones Eliminar (rojo) y Cancelar (gris) */
+	}
+	.confirmar-si {
+		background-color: #e74c3c;
+		color: white;
+		border: 1px solid #e74c3c;
+	}
+
+	.confirmar-no {
+		background-color: #bdc3c7;
+		color: #333;
+		border: 1px solid #bdc3c7;
+	}
+
+	.confirmar-si:hover {
+		background-color: #c0392b;
+	}
+
+	.confirmar-no:hover {
+		background-color: #95a5a6;
+	}
 </style>
