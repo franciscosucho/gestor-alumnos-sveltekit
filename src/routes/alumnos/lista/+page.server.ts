@@ -18,27 +18,33 @@ export const load: PageServerLoad = async () => {
 			domicilio,
 			telefono_padre,
 			nacimiento,
-			id_curso
+			id_curso (
+                curso,
+                turno  
+            )
 		`)
         .order('apellido', { ascending: true });
-
     if (fetchError) {
         console.error('Error al obtener alumnos:', fetchError.message);
         throw error(500, 'Error al obtener la lista de alumnos.');
     }
 
-    return { alumnos };
+
+    const { data: cursos, error: cursoError } = await supabase
+        .from('curso')
+        .select(`id, curso, turno`);
+    if (cursoError) {
+        console.error('Error al obtener cursos:', cursoError.message);
+        throw error(500, 'Error al obtener la lista de cursos.');
+    }
+    return { alumnos, cursos };
 };
 
-/**
- * Acciones para manejar agregar, editar y eliminar alumnos
- */
+
 export const actions: Actions = {
 
 
-    /**
-     * Acción para eliminar un alumno
-     */
+
     eliminar: async ({ request }) => {
         const form = await request.formData();
         const id = form.get('id') as string;

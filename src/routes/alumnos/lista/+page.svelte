@@ -1,80 +1,95 @@
 <script lang="ts">
 	import { page } from "$app/stores";
-	import { invalidate, goto } from "$app/navigation"; 
+	import { enhance } from "$app/forms";
+	import { invalidate, goto } from "$app/navigation";
 
-	
 	interface Alumno {
-		id: string; // Cambiado a string (UUID)
+		id: string; 
 		nombre: string;
 		apellido: string | null;
 		dni: number;
-		curso: { nombre: string } | null;
-		
+		curso: { curso: string, turno:string } | null;
 	}
 
-	
-	let data = $page.data as { alumnos: Alumno[] };
-    $: alumnos = data.alumnos; 
-
+	let data = $page.data 
+	$: alumnos = data.alumnos;
+	const cursos = data.cursos;
+	let alumnoEditando: any = null;
+	let mostrarFormulario = false;
 	let busqueda = "";
 	let paginaActual = 1;
 	const alumnosPorPagina = 5;
 
-	
 	let errorMensaje: string | null = null;
-	let mostrarConfirmacionId: string | null = null; 
+	let mostrarConfirmacionId: string | null = null;
+	function editarAlumno(id: any) {
+		alumnoEditando = alumnos.find((a:any) => a.id === id);
+		mostrarFormulario = true;
+	}
 
-	// --- Lógica de Edición (Redirección) ---
-    function editarAlumno(id: string) {
-        
-        goto(`/alumnos/editar/${id}`);
-    }
+	async function actualizarAlumno() {
+		try {
+			const response = await fetch(`/api/alumnos/${alumnoEditando.id}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(alumnoEditando),
+			});
+			if (!response.ok) throw new Error("Error al actualizar alumno");
 
-	// --- Lógica de Eliminación con Fetch (Corregida para el JSON de SvelteKit) ---
+			mostrarFormulario = false;
+			alumnoEditando = null;
+
+			alert("Alumno actualizado correctamente");
+		} catch (err: any) {
+			errorMensaje = err.message;
+		}
+	}
+
+	function cancelarEdicion() {
+		mostrarFormulario = false;
+		alumnoEditando = null;
+	}
+
 	async function eliminarAlumno(id: string) {
-		// Cierra la confirmación de inmediato
 		mostrarConfirmacionId = null;
 
 		const formData = new FormData();
 		formData.append("id", id);
 
-        // Utilizamos el endpoint de acción '?/eliminar'
 		const res = await fetch("?/eliminar", {
 			method: "POST",
 			body: formData,
 		});
 
-		// Intentamos parsear el JSON. Si falla o no hay cuerpo, usamos un objeto de error por defecto.
-		const result = res.status !== 204
-			? await res.json().catch(() => ({ status: res.status, type: 'error', message: 'Respuesta inválida del servidor.' }))
-			: { status: 200, type: "success" };
-            
+		const result =
+			res.status !== 204
+				? await res.json().catch(() => ({
+						status: res.status,
+						type: "error",
+						message: "Respuesta inválida del servidor.",
+					}))
+				: { status: 200, type: "success" };
+
 		console.log("Respuesta de eliminación:", result);
 
-		// *** CONDICIÓN CORREGIDA: Verificamos el estado HTTP o el tipo de éxito en el resultado JSON ***
-		if (res.ok || result.type === "success") { 
-			// 1. REACTIVIDAD INMEDIATA: Eliminamos el alumno de la lista local 'alumnos'.
-            // Esto actualiza la tabla visible de inmediato gracias a la reactividad de Svelte.
-			alumnos = alumnos.filter((a) => a.id !== id);
+		if (res.ok || result.type === "success") {
+			alumnos = alumnos.filter((a:any) => a.id !== id);
 
-			// 2. SINCRONIZACIÓN DE DATOS: Forzamos la recarga de los datos del servidor (Load Function)
-			// Esto asegura que si el servidor devuelve menos datos, SvelteKit sincronice 'alumnos' con la DB.
 			await invalidate("alumnos");
 
-			errorMensaje = null; // Limpiar cualquier error anterior
+			errorMensaje = null;
 		} else {
-			// Manejar errores de la acción o del servidor
 			const msg =
 				result.message ||
 				"Ocurrió un error desconocido al eliminar el alumno.";
 			console.error("Error al eliminar:", msg);
-			errorMensaje = msg; // Mostrar error en la UI
+			errorMensaje = msg;
 		}
 	}
 
-	// --- Filtrado y Paginación (Sin cambios) ---
 	$: alumnosFiltrados = alumnos.filter(
-		(a) =>
+		(a:any) =>
+	
 			a.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
 			a.apellido?.toLowerCase().includes(busqueda.toLowerCase()) ||
 			a.dni.toString().includes(busqueda),
@@ -93,116 +108,281 @@
 	}
 </script>
 
-<div class="contenedor-lista">
-	<h2>Lista de Alumnos</h2>
-
-	<!-- Mensaje de Error (Alternativa a alert()) -->
-	{#if errorMensaje}
-		<div class="mensaje-error">
-			{errorMensaje}
-			<button on:click={() => (errorMensaje = null)} class="cerrar-error"
-				>✖</button
-			>
-		</div>
-	{/if}
-
-	<div class="buscador">
-		<input
-			type="text"
-			placeholder="Buscar por nombre, apellido o DNI..."
-			bind:value={busqueda}
-		/>
-	</div>
-
-	<table class="tabla-alumnos">
-		<thead>
-			<tr>
-				<th>ID</th>
-				<th>Nombre</th>
-				<th>Apellido</th>
-				<th>DNI</th>
-				<th>Curso</th>
-				<th>Acciones</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#if alumnosPaginados.length > 0}
-				{#each alumnosPaginados as alumno (alumno.id)}
-					<tr>
-						<td>{alumno.id}</td>
-						<td>{alumno.nombre}</td>
-						<td>{alumno.apellido}</td>
-						<td>{alumno.dni}</td>
-						<td>{alumno.curso?.nombre || "Sin curso"}</td>
-						<td class="acciones">
-							<button 
-                                class="editar"
-                                on:click={() => editarAlumno(alumno.id)} 
-                            >
-                                Editar
-                            </button>
-							<button
-								class="eliminar"
-								on:click={() =>
-									(mostrarConfirmacionId = alumno.id)}
+{#if mostrarFormulario && alumnoEditando}
+	<div class="cont_form">
+		<h3>Editar Alumno</h3>
+		<form method="POST" use:enhance action="?/editar">
+			<div class="cont_input">
+				<label for="dni">DNI</label>
+				<input
+					type="number"
+					name="dni"
+					bind:value={alumnoEditando.dni}
+					required
+				/>
+			</div>
+			<input type="hidden" name="id" value={alumnoEditando.id} />
+			<div class="cont_input">
+				<label for="nombre">curso</label>
+				<select name="id_curso" id="">
+					{#each cursos as curso}
+						{#if curso.id == alumnoEditando.curso?.id}
+							<option value={curso.id} selected
+								>{curso.curso}</option
 							>
-								Eliminar
-							</button>
+						{:else}
+							<option value={curso.id}>{curso.curso}</option>
+						{/if}
+					{/each}
+				</select>
+			</div>
+			<div class="cont_input">
+				<label for="nombre">Nombre</label>
+				<input
+					type="text"
+					name="nombre"
+					bind:value={alumnoEditando.nombre}
+					required
+				/>
+			</div>
+			<div class="cont_input">
+				<label for="apellido">Apellido</label>
+				<input
+					type="text"
+					name="apellido"
+					bind:value={alumnoEditando.apellido}
+					required
+				/>
+			</div>
+			<div class="cont_input">
+				<label for="domicilio">Domicilio</label>
+				<input
+					type="text"
+					name="domicilio"
+					bind:value={alumnoEditando.domicilio}
+				/>
+			</div>
+			<div class="cont_input">
+				<label for="telefono">Teléfono del padre</label>
+				<input
+					type="text"
+					name="telefono"
+					bind:value={alumnoEditando.telefono_padre}
+				/>
+			</div>
+			<div class="cont_input">
+				<label for="email">Email</label>
+				<input
+					type="email"
+					name="email"
+					bind:value={alumnoEditando.email}
+				/>
+			</div>
+			<div class="cont_input">
+				<label for="fecha_nac">Fecha de nacimiento</label>
+				<input
+					type="date"
+					name="fecha_nac"
+					bind:value={alumnoEditando.nacimiento}
+				/>
+			</div>
 
-							<!-- Modal de Confirmación en línea -->
-							{#if mostrarConfirmacionId === alumno.id}
-								<div class="confirmacion-popup">
-									<p>
-										¿Seguro que quieres eliminar a {alumno.nombre}?
-									</p>
-									<button
-										class="confirmar-si"
-										on:click={() =>
-											eliminarAlumno(alumno.id)}
-									>
-										Sí
-									</button>
-									<button
-										class="confirmar-no"
-										on:click={() =>
-											(mostrarConfirmacionId = null)}
-									>
-										No
-									</button>
-								</div>
-							{/if}
-						</td>
-					</tr>
-				{/each}
-			{:else}
-				<tr>
-					<td colspan="6" class="no-encontrado"
-						>No se encontraron alumnos.</td
-					>
-				</tr>
-			{/if}
-		</tbody>
-	</table>
-
-	<div class="paginacion">
-		<button
-			on:click={() => cambiarPagina(paginaActual - 1)}
-			disabled={paginaActual === 1}
-		>
-			Anterior
-		</button>
-		<span>Página {paginaActual} de {totalPaginas}</span>
-		<button
-			on:click={() => cambiarPagina(paginaActual + 1)}
-			disabled={paginaActual === totalPaginas}
-		>
-			Siguiente
-		</button>
+			<div class="botones-form">
+				<button
+					type="button"
+					class="btn-cancelar"
+					on:click={cancelarEdicion}
+				>
+					Cancelar
+				</button>
+				<button type="submit" class="btn-guardar">Guardar</button>
+			</div>
+		</form>
 	</div>
-</div>
+{/if}
+{#if mostrarFormulario == false && alumnoEditando == null}
+	<div class="contenedor-lista">
+		<h2>Lista de Alumnos</h2>
+
+		<!-- Mensaje de Error (Alternativa a alert()) -->
+		{#if errorMensaje}
+			<div class="mensaje-error">
+				{errorMensaje}
+				<button
+					on:click={() => (errorMensaje = null)}
+					class="cerrar-error">✖</button
+				>
+			</div>
+		{/if}
+
+		<div class="buscador">
+			<input
+				type="text"
+				placeholder="Buscar por nombre, apellido o DNI..."
+				bind:value={busqueda}
+			/>
+		</div>
+
+		<table class="tabla-alumnos">
+			<thead>
+				<tr>
+					<th>ID</th>
+					<th>Nombre</th>
+					<th>Apellido</th>
+					<th>DNI</th>
+					<th>Curso</th>
+					<th>Acciones</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#if alumnosPaginados.length > 0}
+					{#each alumnosPaginados as alumno (alumno.id)}
+						<tr>
+							<td>{alumno.id}</td>
+							<td>{alumno.nombre}</td>
+							<td>{alumno.apellido}</td>
+							<td>{alumno.dni}</td>
+							<td>{alumno.id_curso.curso}</td>
+							<td class="acciones">
+								<button
+									class="editar"
+									on:click={() => editarAlumno(alumno.id)}
+								>
+									Editar
+								</button>
+								<button
+									class="eliminar"
+									on:click={() =>
+										(mostrarConfirmacionId = alumno.id)}
+								>
+									Eliminar
+								</button>
+
+								<!-- Modal de Confirmación en línea -->
+								{#if mostrarConfirmacionId === alumno.id}
+									<div class="confirmacion-popup">
+										<p>
+											¿Seguro que quieres eliminar a {alumno.nombre}?
+										</p>
+										<button
+											class="confirmar-si"
+											on:click={() =>
+												eliminarAlumno(alumno.id)}
+										>
+											Sí
+										</button>
+										<button
+											class="confirmar-no"
+											on:click={() =>
+												(mostrarConfirmacionId = null)}
+										>
+											No
+										</button>
+									</div>
+								{/if}
+							</td>
+						</tr>
+					{/each}
+				{:else}
+					<tr>
+						<td colspan="6" class="no-encontrado"
+							>No se encontraron alumnos.</td
+						>
+					</tr>
+				{/if}
+			</tbody>
+		</table>
+
+		<div class="paginacion">
+			<button
+				on:click={() => cambiarPagina(paginaActual - 1)}
+				disabled={paginaActual === 1}
+			>
+				Anterior
+			</button>
+			<span>Página {paginaActual} de {totalPaginas}</span>
+			<button
+				on:click={() => cambiarPagina(paginaActual + 1)}
+				disabled={paginaActual === totalPaginas}
+			>
+				Siguiente
+			</button>
+		</div>
+	</div>
+{/if}
 
 <style>
-    /* Estilos copiados del original */
+	/* Estilos copiados del original */
+
+	.cont_form {
+		background: #fff;
+		padding: 30px;
+		border-radius: 12px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		width: 95%;
+		max-width: 600px;
+		margin: 30px auto;
+	}
+	.cont_form .cont_input {
+		margin-bottom: 15px;
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		height: auto;
+		gap: 10px;
+	}
+	.cont_form .cont_input label {
+		font-weight: 600;
+		color: #2c3e50;
+	}
+	.cont_form .cont_input input,select {
+		padding: 10px 15px;
+		border: 1px solid #bdc3c7;
+		border-radius: 8px;
+		font-size: 1rem;
+		transition:
+			border-color 0.3s,
+			box-shadow 0.3s;
+	}
+	.cont_form .cont_input input:focus {
+		border-color: #3498db;
+		box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+		outline: none;
+	}
+	.cont_form .botones-form {
+		display: flex;
+		justify-content: flex-end;
+		gap: 15px;
+		margin-top: 20px;
+	}
+	.cont_form .botones-form .btn-cancelar,
+	.cont_form .botones-form .btn-guardar {
+		padding: 10px 20px;
+		border: none;
+		border-radius: 6px;
+		cursor: pointer;
+		font-size: 1rem;
+		font-weight: 600;
+		transition: all 0.2s ease-in-out;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+	.cont_form .botones-form .btn-cancelar {
+		background-color: #e74c3c;
+		color: white;
+	}
+	.cont_form .botones-form .btn-cancelar:hover {
+		background-color: #c0392b;
+		transform: translateY(-1px);
+	}
+	.cont_form .botones-form .btn-guardar {
+		background-color: #2ecc71;
+		color: white;
+	}
+	.cont_form .botones-form .btn-guardar:hover {
+		background-color: #27ae60;
+		transform: translateY(-1px);
+	}
+
 	* {
 		font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 		box-sizing: border-box;
