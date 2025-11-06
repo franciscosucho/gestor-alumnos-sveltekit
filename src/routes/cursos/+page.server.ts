@@ -13,6 +13,7 @@ export const load: PageServerLoad = async ({ params }) => {
         console.error('Error al obtener cursos:', fetchError.message);
         throw error(500, 'Error al obtener los cursos.');
     }
+    console.log("data cursos",cursos)
     if (cursos) {
         return { cursos };
     }
@@ -20,7 +21,7 @@ export const load: PageServerLoad = async ({ params }) => {
 };
 
 export const actions = {
-    agregarCurso: async ({ request }) => {
+    agregarCurso: async ({ request }: { request: Request }) => {
         const data = await request.formData();
         const nombre = data.get('nombre')?.toString().trim();
         const turno = data.get('turno')?.toString().trim();

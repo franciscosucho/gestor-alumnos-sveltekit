@@ -2,11 +2,12 @@
     import { enhance } from "$app/forms";
     import type { Curso, CursoData } from "$lib/types/types";
     import { page } from "$app/stores";
-    // Desestructurás los cursos
-    let cursosData: CursoData = $page.data.cursos;
-    let cursos: Curso[] = cursosData.cursos;
+    let data = $page.data;
+    // Agregamos una comprobación para asegurarnos de que `data.cursos` existe y es un array
+    // Aunque ya tienes `|| []`, la carga inicial a veces puede ser problemática
+    $: cursos = Array.isArray(data.cursos) ? data.cursos : [];
     let cursoSeleccionado: Curso | null = null;
-
+    console.log("info cur",data.cursos)
     let materias: any = {
         1: [
             { id: 1, nombre: "Matemática", profesor: "Prof. García" },
@@ -19,7 +20,6 @@
         3: [{ id: 5, nombre: "Química", profesor: "Prof. Torres" }],
     };
 
-    //let cursoSeleccionado = cursos;
     let filtroCurso = "";
     let filtroMateria = "";
 
@@ -28,39 +28,31 @@
     let mostrarFormMateria = false;
 
     // Datos nuevos
-    let nuevoCurso = { nombre: "", turno: "" };
+    let nuevoCurso = { curso: "", turno: "" };
     let nuevaMateria = { nombre: "", profesor: "" };
 
-    function cursosFiltrados() {
-        return cursos.filter((c: Curso) =>
-            c.nombre.toLowerCase().includes(filtroCurso.toLowerCase()),
-        );
-    }
+   
+    $: cursosFiltrados = cursos.filter((c: Curso) =>
+        (c.curso || "") 
+            .toLowerCase()
+            .includes(filtroCurso.toLowerCase()),
+    );
     function seleccionarCurso(curso: Curso) {
         cursoSeleccionado = curso;
     }
+
     function materiasFiltradas() {
         if (!cursoSeleccionado || !materias[cursoSeleccionado.id]) return [];
+    
         return materias[cursoSeleccionado.id].filter((m: any) =>
-            m.nombre.toLowerCase().includes(filtroMateria.toLowerCase()),
+            (m.nombre || "") 
+                .toLowerCase()
+                .includes(filtroMateria.toLowerCase()),
         );
     }
-
-    // function agregarMateria() {
-    //     if (nuevaMateria.nombre && nuevaMateria.profesor) {
-    //         materias[cursoSeleccionado.id].push({
-    //             id: Math.random(),
-    //             nombre: nuevaMateria.nombre,
-    //             profesor: nuevaMateria.profesor,
-    //         });
-    //         nuevaMateria = { nombre: "", profesor: "" };
-    //         mostrarFormMateria = false;
-    //     }
-    // }
 </script>
 
 <div class="contenedor">
-    <!-- Panel lateral -->
     <aside class="panel-cursos">
         <h2>Cursos</h2>
         <input
@@ -85,7 +77,7 @@
                             type="text"
                             name="nombre"
                             placeholder="Nombre del curso"
-                            bind:value={nuevoCurso.nombre}
+                            bind:value={nuevoCurso.curso}
                             required
                         />
                         <input
@@ -108,16 +100,13 @@
         {/if}
 
         <ul class="lista-cursos">
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            {#each cursosFiltrados() as curso}
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+            {#each cursosFiltrados as curso}
                 <li
-                    class:selected={curso.id === cursosData.curso_seleccionado?.id}
+                    class:selected={curso.id === cursoSeleccionado?.id}
                     on:click={() => seleccionarCurso(curso)}
                 >
                     <div>
-                        <strong>{curso.nombre}</strong>
+                        <strong>{curso.curso}</strong>
                         <p>{curso.turno}</p>
                     </div>
                 </li>
@@ -125,10 +114,9 @@
         </ul>
     </aside>
 
-    <!-- Panel principal -->
     <main class="panel-materias">
         <header class="encabezado">
-            <h2>Materias de {cursosData.curso_seleccionado?.nombre}</h2>
+            <h2>Materias de {cursoSeleccionado?.curso || 'ningún curso'}</h2>
             <div class="acciones-header">
                 <input
                     type="text"
@@ -194,6 +182,7 @@
 </div>
 
 <style>
+    /* ... (CSS styles are unchanged) ... */
     .contenedor {
         display: flex;
         gap: 24px;
