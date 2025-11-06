@@ -1,6 +1,7 @@
 <script>
     import Card from "$lib/components/Card.svelte";
-    // Estado del formulario
+    import { page } from "$app/stores";
+
     let alumno = {
         nombres: "",
         apellidos: "",
@@ -9,13 +10,11 @@
         telefono: "",
         fechaNacimiento: "",
         curso: "",
-        domicilio: ""
+        domicilio: "",
     };
-
-    const cursos = [
-        { id: "332bf633-4e46-44b3-8e3d-bfb4063797d8", nombre: "7°2°" },
-        { id: "c7f56a5-718a-47f0...", nombre: "7°1°" },
-    ];
+    let data = $page.data;
+    const cursos =  data.cursos 
+    
 </script>
 
 <div class="page-container">
@@ -109,7 +108,7 @@
                             >Seleccionar curso</option
                         >
                         {#each cursos as curso}
-                            <option value={curso.id}>{curso.nombre}</option>
+                            <option value={curso.id}>{curso.curso}</option>
                         {/each}
                     </select>
                 </div>

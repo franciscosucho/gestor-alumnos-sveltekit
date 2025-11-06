@@ -1,10 +1,31 @@
+
 import { fail, redirect, type Actions } from '@sveltejs/kit';
 import { supabase } from '$lib/supabaseClient';
+import { error } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
+
+export const load: PageServerLoad = async ({ params }) => {
+	const { data: cursos, error: fetchError } = await supabase
+		.from('curso')
+		.select('*')
+		.order('id', { ascending: true });
+
+	if (fetchError) {
+		console.error('Error al obtener cursos:', fetchError.message);
+		throw error(500, 'Error al obtener los cursos.');
+	}
+
+
+	if (cursos) {
+		return { cursos };
+	}
+	error(404, 'Not found');
+};
 
 export const actions: Actions = {
 	default: async ({ request }) => {
 		console.log("Procesando formulario de registro de alumno...");
-		
+
 		const data = await request.formData();
 
 		const alumno = {
@@ -20,7 +41,7 @@ export const actions: Actions = {
 
 
 		// Validaciones
-		if (!alumno.nombres || !alumno.apellidos || !alumno.dni || !alumno.email || !alumno.curso )  {
+		if (!alumno.nombres || !alumno.apellidos || !alumno.dni || !alumno.email || !alumno.curso) {
 			return fail(400, { error: 'Todos los campos obligatorios deben estar completos.' });
 		}
 
@@ -29,11 +50,11 @@ export const actions: Actions = {
 		const { error } = await supabase.from('alumno').insert([
 			{
 				nombre: alumno.nombres,
-				apellido: alumno.apellidos, 
+				apellido: alumno.apellidos,
 				dni: alumno.dni,
 				email: alumno.email,
 				domicilio: alumno.domicilio,
-				id_curso: alumno.curso, 
+				id_curso: alumno.curso,
 				telefono_padre: alumno.telefono ? Number(alumno.telefono) : null,
 				nacimiento: alumno.fechaNacimiento
 			}
@@ -48,7 +69,6 @@ export const actions: Actions = {
 		throw redirect(303, '/alumnos/lista');
 	}
 };
-
 
 
 
