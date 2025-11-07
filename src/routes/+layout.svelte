@@ -9,4 +9,10 @@
 
 <slot />
 
-<footer></footer>
+<style>
+	* {
+		margin: 0px;
+		box-sizing: border-box;
+		padding: 0px;
+	}
+</style>

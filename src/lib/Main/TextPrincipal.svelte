@@ -13,7 +13,7 @@
     .contTextMain {
         display: flex;
         justify-content: flex-start;
-        align-items: flex-start;
+        align-items: center;
         gap: 10px;
         flex-direction: column;
         font-family: Arial, Helvetica, sans-serif;

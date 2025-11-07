@@ -1,14 +1,15 @@
 import { error } from "@sveltejs/kit";
 import { supabase } from "$lib/supabaseClient";
+import type { PageServerLoad } from './$types';
 
 function isUUID(value: string): boolean {
 	return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
-export const load = async ({ params }) => {
+export const load: PageServerLoad = async ({ params }) => {
 	const { id } = params as { id: string };
 
-	
+
 	if (!id || id.endsWith(".css") || id.endsWith(".js") || id.endsWith(".map")) {
 		throw error(404, "Recurso no válido o no encontrado.");
 	}
@@ -32,7 +33,7 @@ export const load = async ({ params }) => {
 		throw error(404, "Alumno no encontrado.");
 	}
 
-	
+
 	let cursoNombre = "Sin curso asignado";
 	if (alumno.id_curso) {
 		const { data: cursoData, error: cursoError } = await supabase
@@ -41,14 +42,14 @@ export const load = async ({ params }) => {
 			.eq("id", alumno.id_curso)
 			.single();
 
-		if (cursoError) console.warn("⚠️ Error al obtener curso:", cursoError);
+		if (cursoError) console.warn(" Error al obtener curso:", cursoError);
 		else if (cursoData) cursoNombre = cursoData.curso;
 	}
 
-	
+
 	const { data: historial, error: historialError } = await supabase
 		.from("historial_alumno")
-		.select("id, id_materia, id_profesor, nota_primer_cuatri, nota_segundo_cuatri, estado, año_cursada")
+		.select("id, id_materia, profesor, año_de_cursada, nota_primer_cuatri,nota_segundo_cuatri,estado_materia")
 		.eq("id_alumno", id);
 
 	if (historialError) {
@@ -57,11 +58,11 @@ export const load = async ({ params }) => {
 	}
 
 	const historialDetallado = await Promise.all(
-		(historial ?? []).map(async (record) => {
+		(historial ?? []).map(async (record:any) => {
 			let materiaNombre = "Materia desconocida";
 			let profesorNombre = "Profesor no asignado";
 
-		
+
 			if (record.id_materia) {
 				const { data: materiaData } = await supabase
 					.from("materias")
@@ -72,21 +73,11 @@ export const load = async ({ params }) => {
 				if (materiaData) materiaNombre = materiaData.nombre;
 			}
 
-			if (record.id_profesor) {
-				const { data: profData } = await supabase
-					.from("teachers")
-					.select("first_name, last_name")
-					.eq("id", record.id_profesor)
-					.single();
-
-				if (profData)
-					profesorNombre = `${profData.first_name} ${profData.last_name}`;
-			}
+			
 
 			return {
 				id: record.id,
 				materia: materiaNombre,
-				profesor: profesorNombre,
 				nota1: record.nota_primer_cuatri ?? "-",
 				nota2: record.nota_segundo_cuatri ?? "-",
 				estado: record.estado ?? "Desconocido",

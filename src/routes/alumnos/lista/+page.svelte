@@ -4,15 +4,16 @@
 	import { invalidate, goto } from "$app/navigation";
 
 	interface Alumno {
-		id: string; 
+		id: string;
 		nombre: string;
 		apellido: string | null;
 		dni: number;
-		curso: { curso: string, turno:string } | null;
+		curso: { curso: string; turno: string } | null;
 	}
 
-	let data = $page.data 
+	let data = $page.data;
 	$: alumnos = data.alumnos;
+
 	const cursos = data.cursos;
 	let alumnoEditando: any = null;
 	let mostrarFormulario = false;
@@ -23,7 +24,7 @@
 	let errorMensaje: string | null = null;
 	let mostrarConfirmacionId: string | null = null;
 	function editarAlumno(id: any) {
-		alumnoEditando = alumnos.find((a:any) => a.id === id);
+		alumnoEditando = alumnos.find((a: any) => a.id === id);
 		mostrarFormulario = true;
 	}
 
@@ -73,7 +74,7 @@
 		console.log("Respuesta de eliminación:", result);
 
 		if (res.ok || result.type === "success") {
-			alumnos = alumnos.filter((a:any) => a.id !== id);
+			alumnos = alumnos.filter((a: any) => a.id !== id);
 
 			await invalidate("alumnos");
 
@@ -88,8 +89,7 @@
 	}
 
 	$: alumnosFiltrados = alumnos.filter(
-		(a:any) =>
-	
+		(a: any) =>
 			a.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
 			a.apellido?.toLowerCase().includes(busqueda.toLowerCase()) ||
 			a.dni.toString().includes(busqueda),
@@ -204,7 +204,6 @@
 	<div class="contenedor-lista">
 		<h2>Lista de Alumnos</h2>
 
-		<!-- Mensaje de Error (Alternativa a alert()) -->
 		{#if errorMensaje}
 			<div class="mensaje-error">
 				{errorMensaje}
@@ -244,6 +243,15 @@
 							<td>{alumno.dni}</td>
 							<td>{alumno.id_curso.curso}</td>
 							<td class="acciones">
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<!-- svelte-ignore a11y_missing_attribute -->
+								<a
+									class="eliminar"
+									href="./historial/{alumno.id}"
+								>
+									Historial academico
+								</a>
 								<button
 									class="editar"
 									on:click={() => editarAlumno(alumno.id)}
@@ -258,7 +266,6 @@
 									Eliminar
 								</button>
 
-								<!-- Modal de Confirmación en línea -->
 								{#if mostrarConfirmacionId === alumno.id}
 									<div class="confirmacion-popup">
 										<p>
@@ -335,7 +342,8 @@
 		font-weight: 600;
 		color: #2c3e50;
 	}
-	.cont_form .cont_input input,select {
+	.cont_form .cont_input input,
+	select {
 		padding: 10px 15px;
 		border: 1px solid #bdc3c7;
 		border-radius: 8px;
@@ -482,7 +490,9 @@
 		white-space: nowrap;
 	}
 
-	.acciones button {
+	.acciones button,
+	a {
+		text-decoration: none;
 		margin-right: 8px;
 		padding: 8px 15px;
 		border: none;
@@ -493,7 +503,16 @@
 		transition: all 0.2s ease-in-out;
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	}
-
+	.acciones a{
+		color: black;
+		background-color: transparent;
+		border: 1px solid gray;
+	}
+	.acciones a:hover{
+		
+		background-color: rgba(42, 147, 218, 0.151);
+		
+	}
 	.editar {
 		background-color: #3498db;
 		color: white;

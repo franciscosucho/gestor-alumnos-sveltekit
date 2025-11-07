@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { slide } from 'svelte/transition';
-
+    import { page } from "$app/stores";
     // --- Definición de Tipos ---
     interface GradeRecord {
         materia: string;
@@ -12,41 +12,23 @@
         anio: number;
     }
 
+    let data = $page.data;
+	$: alumnos = data.alumnos;
+
+	$: historial_alumno = data.historial;
+    
     interface YearGroup {
         year: number;
         records: GradeRecord[];
     }
 
-    // --- DATOS DEL ESTUDIANTE ---
-    const studentInfo = {
-        name: "Juan Pérez",
-        studentId: "10293847"
-    };
 
-    const studentHistory: GradeRecord[] = [
-        // Año 2025 (Más reciente)
-        { materia: "Matemática Avanzada", profesor: "Prof. García", nota1: 8, nota2: 9, estado: "Aprobado", anio: 2025 },
-        { materia: "Lengua y Literatura", profesor: "Prof. López", nota1: 7, nota2: 8, estado: "Aprobado", anio: 2025 },
-        { materia: "Biología Celular", profesor: "Prof. Ruiz", nota1: 5, nota2: 6, estado: "Desaprobado", anio: 2025 },
-        // Año 2024
-        { materia: "Historia I", profesor: "Prof. Méndez", nota1: 9, nota2: 8, estado: "Aprobado", anio: 2024 },
-        { materia: "Geografía General", profesor: "Prof. Castro", nota1: 6, nota2: 6, estado: "Aprobado", anio: 2024 },
-        { materia: "Programación Intro", profesor: "Prof. Díaz", nota1: 10, nota2: 9, estado: "Aprobado", anio: 2024 },
-        // Año 2023 (Más antiguo)
-        { materia: "Física Básica", profesor: "Prof. Torres", nota1: 4, nota2: 5, estado: "Desaprobado", anio: 2023 },
-        { materia: "Química Inorgánica", profesor: "Prof. Rojas", nota1: 10, nota2: 9, estado: "Aprobado", anio: 2023 },
-        { materia: "Educación Física", profesor: "Prof. Vidal", nota1: 7, nota2: 7, estado: "Aprobado", anio: 2023 },
-    ];
-    // ----------------------------
-    
-    // Estado para almacenar el historial agrupado y expandido/colapsado
+
+
     let groupedHistory: YearGroup[] = [];
-    let expandedYear: number | null = null; // Almacena el año actualmente expandido
+    let expandedYear: number | null = null; 
 
-    /**
-     * Procesa la historia del estudiante, agrupando los registros por año
-     * y ordenando los años de forma descendente (más reciente primero).
-     */
+   
     function processHistory(history: GradeRecord[]): YearGroup[] {
         const grouped: { [key: number]: GradeRecord[] } = history.reduce((acc, record) => {
             const year = record.anio;
@@ -65,19 +47,16 @@
             .sort((a, b) => b.year - a.year);
     }
 
-    /**
-     * Muestra/oculta el detalle de las materias para un año específico.
-     */
+   
     function toggleYear(year: number) {
-        // Si el año actual expandido es el que se presionó, colapsarlo (null)
-        // De lo contrario, expandir el nuevo año.
+        
         expandedYear = expandedYear === year ? null : year;
     }
 
-    // Ejecutar la lógica de procesamiento cuando el componente se monta
+
     onMount(() => {
-        groupedHistory = processHistory(studentHistory);
-        // Expandir el año más reciente por defecto
+        groupedHistory = processHistory(historial_alumno);
+       
         if (groupedHistory.length > 0) {
             expandedYear = groupedHistory[0].year;
         }
@@ -86,24 +65,23 @@
 </script>
 
 <div class="page-container">
-    <!-- Contenedor Principal, similar a las secciones principales de la StudentApp -->
+ 
     <div class="content-card">
 
         <h1 class="page-title">
             Historial Académico
         </h1>
         
-        <!-- Información del Estudiante: Bloque destacado en azul claro/gris -->
+        
         <div class="student-info-block">
-            <p class="info-item">Alumno: <span class="info-value">{studentInfo.name}</span></p>
-            <p class="info-item">ID de Registro: <span class="info-value-secondary">{studentInfo.studentId}</span></p>
+            <p class="info-item">Alumno: <span class="info-value">{alumnos.name}</span></p>
+            <p class="info-item">ID de Registro: <span class="info-value-secondary">{alumnos.studentId}</span></p>
         </div>
 
-        <!-- Historial por Año (Acordeón) -->
         <div class="history-accordion">
             {#each groupedHistory as group}
                 <div class="year-group">
-                    <!-- Encabezado del Año (Clickable) -->
+                    
                     <button 
                         class="year-header" 
                         on:click={() => toggleYear(group.year)}
@@ -111,7 +89,7 @@
                         aria-controls="collapse-year-{group.year}"
                     >
                         <span class="year-title">Año Académico: {group.year}</span>
-                        <!-- Icono de Flecha (Gira usando CSS dinámico) -->
+                       
                         <svg 
                             class="toggle-icon" 
                             class:rotate-180={expandedYear === group.year}
@@ -124,7 +102,7 @@
                         </svg>
                     </button>
 
-                    <!-- Contenido Colapsable (Detalle de Materias) -->
+                  
                     {#if expandedYear === group.year}
                         <div 
                             id="collapse-year-{group.year}" 
@@ -169,7 +147,7 @@
 </div>
 
 <style>
-    /* VARIABLES DE COLOR para correlatividad con StudentApp (azul, gris, blanco) */
+   
     :root {
         --primary-color: #3f51b5; /* Azul Índigo */
         --secondary-color: #4CAF50; /* Verde, para Aprobado */
@@ -180,11 +158,10 @@
         --border-color: #ddd;
     }
 
-    /* Diseño General del Contenedor */
     .page-container {
         padding: 20px;
         min-height: 100vh;
-        background-color: var(--light-bg); /* Fondo gris claro */
+        background-color: var(--light-bg); 
     }
 
     .content-card {
@@ -205,12 +182,11 @@
         margin-bottom: 25px;
     }
 
-    /* Bloque de Información del Estudiante */
     .student-info-block {
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        background-color: #e8f0fe; /* Azul muy claro para destacar */
+        background-color: #e8f0fe; 
         border: 1px solid #c5d7f8;
         padding: 15px 20px;
         border-radius: 6px;
@@ -240,7 +216,7 @@
         }
     }
 
-    /* Estilos del Acordeón (Agrupación por Año) */
+    
     .year-group {
         border: 1px solid var(--border-color);
         border-radius: 6px;
@@ -259,7 +235,7 @@
         align-items: center;
         width: 100%;
         padding: 15px 20px;
-        background-color: #f0f4ff; /* Fondo ligeramente azul */
+        background-color: #f0f4ff; 
         color: var(--primary-color);
         border: none;
         cursor: pointer;
@@ -291,14 +267,13 @@
         border-top: 1px solid #eee;
     }
 
-    /* Estilos de la Tabla de Calificaciones */
     .grades-table {
         width: 100%;
         border-collapse: collapse;
     }
 
     .grades-thead {
-        background-color: var(--header-bg); /* Azul oscuro, similar a las cabeceras de tabla de la StudentApp */
+        background-color: var(--header-bg); 
     }
 
     .table-th {
@@ -326,21 +301,21 @@
         border-bottom: 1px solid #f0f0f0;
     }
 
-    /* Estilos de Estado */
+    
     .status-cell {
         font-weight: 700;
         text-transform: uppercase;
     }
 
     .status-approved {
-        color: var(--secondary-color); /* Verde */
+        color: var(--secondary-color); 
     }
 
     .status-failed {
-        color: var(--danger-color); /* Rojo */
+        color: var(--danger-color); 
     }
 
-    /* Responsive */
+  
     .hidden-sm {
         display: none;
     }
