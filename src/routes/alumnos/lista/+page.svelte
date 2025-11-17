@@ -10,7 +10,7 @@
 		dni: number;
 		curso: { curso: string, turno:string } | null;
 	}
-
+	console.log("Alumnos data",$page.data);
 	let data = $page.data 
 	$: alumnos = data.alumnos;
 	const cursos = data.cursos;
