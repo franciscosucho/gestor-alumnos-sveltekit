@@ -1,363 +1,477 @@
-<script lang="ts">
-    import { onMount } from 'svelte';
-    import { slide } from 'svelte/transition';
+<script>
+    // @ts-nocheck
+    import { enhance } from '$app/forms';
+    import { page } from '$app/stores';
+    import { fade, blur } from 'svelte/transition';
 
-    // --- Definición de Tipos ---
-    interface GradeRecord {
-        materia: string;
-        profesor: string;
-        nota1: number;
-        nota2: number;
-        estado: 'Aprobado' | 'Desaprobado';
-        anio: number;
-    }
+    // Datos cargados inicialmente desde +page.server.ts
+    export let data;
+    // Resultado de la última acción del servidor (subir/editar/eliminar)
+    export let form;
 
-    interface YearGroup {
-        year: number;
-        records: GradeRecord[];
-    }
+    let isSubirModalOpen = false;
+    let isEditModalOpen = false;
+    let currentEditData = null; // Datos de la calificación que se está editando
 
-    // --- DATOS DEL ESTUDIANTE ---
-    const studentInfo = {
-        name: "Juan Pérez",
-        studentId: "10293847"
-    };
+    // 1. OBTENER ID DEL USUARIO ACTUAL AUTOMÁTICAMENTE (CORRECCIÓN)
+    let userId;
+    // Se usa una declaración reactiva ($:) para asegurar que el valor se obtiene correctamente
+    // de la tienda $page, evitando el error de importación al cargar el módulo.
+    $: userId = $page.data.userId || 'ID_DE_USUARIO_NO_DISPONIBLE'; 
 
-    const studentHistory: GradeRecord[] = [
-        // Año 2025 (Más reciente)
-        { materia: "Matemática Avanzada", profesor: "Prof. García", nota1: 8, nota2: 9, estado: "Aprobado", anio: 2025 },
-        { materia: "Lengua y Literatura", profesor: "Prof. López", nota1: 7, nota2: 8, estado: "Aprobado", anio: 2025 },
-        { materia: "Biología Celular", profesor: "Prof. Ruiz", nota1: 5, nota2: 6, estado: "Desaprobado", anio: 2025 },
-        // Año 2024
-        { materia: "Historia I", profesor: "Prof. Méndez", nota1: 9, nota2: 8, estado: "Aprobado", anio: 2024 },
-        { materia: "Geografía General", profesor: "Prof. Castro", nota1: 6, nota2: 6, estado: "Aprobado", anio: 2024 },
-        { materia: "Programación Intro", profesor: "Prof. Díaz", nota1: 10, nota2: 9, estado: "Aprobado", anio: 2024 },
-        // Año 2023 (Más antiguo)
-        { materia: "Física Básica", profesor: "Prof. Torres", nota1: 4, nota2: 5, estado: "Desaprobado", anio: 2023 },
-        { materia: "Química Inorgánica", profesor: "Prof. Rojas", nota1: 10, nota2: 9, estado: "Aprobado", anio: 2023 },
-        { materia: "Educación Física", profesor: "Prof. Vidal", nota1: 7, nota2: 7, estado: "Aprobado", anio: 2023 },
-    ];
-    // ----------------------------
-    
-    // Estado para almacenar el historial agrupado y expandido/colapsado
-    let groupedHistory: YearGroup[] = [];
-    let expandedYear: number | null = null; // Almacena el año actualmente expandido
+    // Maneja la visualización de errores de formularios
+    $: errors = form?.errors || {};
+    $: action = form?.action || null;
 
-    /**
-     * Procesa la historia del estudiante, agrupando los registros por año
-     * y ordenando los años de forma descendente (más reciente primero).
-     */
-    function processHistory(history: GradeRecord[]): YearGroup[] {
-        const grouped: { [key: number]: GradeRecord[] } = history.reduce((acc, record) => {
-            const year = record.anio;
-            if (!acc[year]) {
-                acc[year] = [];
-            }
-            acc[year].push(record);
-            return acc;
-        }, {} as { [key: number]: GradeRecord[] });
+    // Controla si se debe mostrar un mensaje de éxito
+    $: successMessage = '';
+    $: if (form?.success) {
+        if (action === 'subir') successMessage = 'Calificación subida con éxito.';
+        if (action === 'editar') successMessage = 'Calificación actualizada con éxito.';
+        if (action === 'eliminar') successMessage = 'Calificación eliminada con éxito.';
 
-        return Object.keys(grouped)
-            .map(year => ({
-                year: parseInt(year),
-                records: grouped[parseInt(year)]
-            }))
-            .sort((a, b) => b.year - a.year);
+        // Cierra modales en caso de éxito
+        isSubirModalOpen = false;
+        isEditModalOpen = false;
+        
+        // Limpia el mensaje de éxito después de 3 segundos
+        setTimeout(() => (successMessage = ''), 3000);
     }
 
     /**
-     * Muestra/oculta el detalle de las materias para un año específico.
+     * Abre el modal de edición y carga los datos del registro seleccionado.
+     * @param {Object} calificacion - El objeto de calificación a editar.
      */
-    function toggleYear(year: number) {
-        // Si el año actual expandido es el que se presionó, colapsarlo (null)
-        // De lo contrario, expandir el nuevo año.
-        expandedYear = expandedYear === year ? null : year;
+    function openEditModal(calificacion) {
+        currentEditData = {
+            // Aseguramos que el ID del alumno (que debe ser el mismo que userId) se mantenga
+            id: calificacion.id,
+            id_alumno: calificacion.id_alumno, 
+            id_materia: calificacion.id_materia,
+            profesor: calificacion.profesor,
+            año_de_cursada: calificacion.año_de_cursada.split('T')[0], // Formato YYYY-MM-DD
+            estado_materia: calificacion.estado_materia || 'pendiente',
+            nota_primer_cuatri: calificacion.nota_primer_cuatri,
+            nota_segundo_cuatri: calificacion.nota_segundo_cuatri
+        };
+        isEditModalOpen = true;
     }
 
-    // Ejecutar la lógica de procesamiento cuando el componente se monta
-    onMount(() => {
-        groupedHistory = processHistory(studentHistory);
-        // Expandir el año más reciente por defecto
-        if (groupedHistory.length > 0) {
-            expandedYear = groupedHistory[0].year;
-        }
-    });
+    /**
+     * Envía la acción de eliminación al backend.
+     * @param {string} id - El ID del registro a eliminar.
+     */
+    function handleDelete(id) {
+        // En este entorno, enviamos la solicitud directamente sin confirmación modal.
+        const formData = new FormData();
+        formData.append('id', id);
+        
+        // Simular el submit del formulario de eliminación
+        fetch('?/eliminar', {
+            method: 'POST',
+            body: formData
+        });
+    }
 
+    // Opciones estáticas para el campo estado_materia
+    const estadoOpciones = ['pendiente', 'aprobada', 'reprobada'];
 </script>
 
-<div class="page-container">
-    <!-- Contenedor Principal, similar a las secciones principales de la StudentApp -->
-    <div class="content-card">
+<svelte:head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :global(body) {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f6f8;
+        }
+        .scroll-container {
+            max-height: calc(100vh - 200px); /* Ajusta la altura máxima para no desbordar */
+        }
+    </style>
+</svelte:head>
 
-        <h1 class="page-title">
-            Historial Académico
-        </h1>
-        
-        <!-- Información del Estudiante: Bloque destacado en azul claro/gris -->
-        <div class="student-info-block">
-            <p class="info-item">Alumno: <span class="info-value">{studentInfo.name}</span></p>
-            <p class="info-item">ID de Registro: <span class="info-value-secondary">{studentInfo.studentId}</span></p>
+<div class="p-4 md:p-8 max-w-7xl mx-auto">
+    <header class="mb-8 flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">Gestión de Calificaciones</h1>
+        <button
+            on:click={() => (isSubirModalOpen = true)}
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 ease-in-out"
+        >
+            + Subir Calificación
+        </button>
+    </header>
+
+    <!-- Indicador de Usuario Actual (Solo informativo en el frontend) -->
+    <div class="mb-4 text-sm text-gray-600 p-3 bg-gray-100 rounded-lg shadow-sm">
+        Visualizando calificaciones para el ID de alumno: <span class="font-mono font-semibold text-gray-800 break-all">{userId}</span>
+    </div>
+
+    <!-- Mensaje de Éxito Global -->
+    {#if successMessage}
+        <div 
+            in:fade="{{ duration: 200 }}" 
+            out:fade="{{ duration: 200 }}"
+            class="mb-6 p-4 text-sm font-medium text-green-800 rounded-lg bg-green-50 shadow-md"
+        >
+            {successMessage}
         </div>
+    {/if}
 
-        <!-- Historial por Año (Acordeón) -->
-        <div class="history-accordion">
-            {#each groupedHistory as group}
-                <div class="year-group">
-                    <!-- Encabezado del Año (Clickable) -->
-                    <button 
-                        class="year-header" 
-                        on:click={() => toggleYear(group.year)}
-                        aria-expanded={expandedYear === group.year}
-                        aria-controls="collapse-year-{group.year}"
-                    >
-                        <span class="year-title">Año Académico: {group.year}</span>
-                        <!-- Icono de Flecha (Gira usando CSS dinámico) -->
-                        <svg 
-                            class="toggle-icon" 
-                            class:rotate-180={expandedYear === group.year}
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24" 
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
+    <!-- Mensaje de Error Global -->
+    {#if form && form.error && action !== 'subir' && action !== 'editar'}
+        <div 
+            in:fade="{{ duration: 200 }}" 
+            out:fade="{{ duration: 200 }}"
+            class="mb-6 p-4 text-sm font-medium text-red-800 rounded-lg bg-red-50 shadow-md"
+        >
+            Error en la acción {action}: {form.error}
+        </div>
+    {/if}
 
-                    <!-- Contenido Colapsable (Detalle de Materias) -->
-                    {#if expandedYear === group.year}
-                        <div 
-                            id="collapse-year-{group.year}" 
-                            class="year-content"
-                            transition:slide
-                        >
-                            <table class="grades-table">
-                                <thead class="grades-thead">
-                                    <tr>
-                                        <th class="table-th">Materia</th>
-                                        <th class="table-th hidden-sm">Profesor</th>
-                                        <th class="table-th">1° C.</th>
-                                        <th class="table-th">2° C.</th>
-                                        <th class="table-th">Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {#each group.records as record}
-                                        <tr class="table-row">
-                                            <td class="table-td font-bold">{record.materia}</td>
-                                            <td class="table-td text-gray-500 hidden-sm">{record.profesor}</td>
-                                            <td class="table-td">{record.nota1}</td>
-                                            <td class="table-td">{record.nota2}</td>
-                                            <td class="table-td status-cell" class:status-approved={record.estado === 'Aprobado'} class:status-failed={record.estado === 'Desaprobado'}>
-                                                {record.estado}
-                                            </td>
-                                        </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
-                        </div>
+    <!-- Sección de Calificaciones Existentes -->
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-200">
+        <div class="scroll-container overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alumno</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Materia</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profesor</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">1er Cuatri</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">2do Cuatri</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Año</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {#if data.error}
+                        <!-- CORRECCIÓN DE ERROR DE SINTAXIS: Se encadena la verificación de error con la visualización de datos. -->
+                        <tr>
+                            <td colspan="8" class="px-4 py-3 whitespace-nowrap text-center text-sm text-red-500 font-medium">
+                                Error al cargar datos: {data.error}
+                            </td>
+                        </tr>
+                    {:else if data.calificaciones && data.calificaciones.length > 0}
+                        {#each data.calificaciones as calificacion (calificacion.id)}
+                            <tr class="hover:bg-gray-50 transition duration-100">
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {calificacion.alumno?.nombre} {calificacion.alumno?.apellido}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                    {calificacion.materias?.nombre || 'N/A'}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                    {calificacion.profesor || 'Sin asignar'}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-center font-bold"
+                                    class:text-green-600={calificacion.nota_primer_cuatri >= 7}
+                                    class:text-red-600={calificacion.nota_primer_cuatri < 7 && calificacion.nota_primer_cuatri !== null}
+                                >
+                                    {calificacion.nota_primer_cuatri ?? '-'}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-center font-bold"
+                                    class:text-green-600={calificacion.nota_segundo_cuatri >= 7}
+                                    class:text-red-600={calificacion.nota_segundo_cuatri < 7 && calificacion.nota_segundo_cuatri !== null}
+                                >
+                                    {calificacion.nota_segundo_cuatri ?? '-'}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                        {calificacion.estado_materia === 'aprobada' ? 'bg-green-100 text-green-800' : ''}
+                                        {calificacion.estado_materia === 'reprobada' ? 'bg-red-100 text-red-800' : ''}
+                                        {calificacion.estado_materia === 'pendiente' ? 'bg-yellow-100 text-yellow-800' : ''}"
+                                    >
+                                        {calificacion.estado_materia || 'Pendiente'}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                    {calificacion.año_de_cursada ? calificacion.año_de_cursada.split('-')[0] : 'N/A'}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
+                                    <button 
+                                        on:click={() => openEditModal(calificacion)}
+                                        class="text-indigo-600 hover:text-indigo-900 mx-2"
+                                        title="Editar"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        on:click={() => handleDelete(calificacion.id)}
+                                        class="text-red-600 hover:text-red-900 mx-2"
+                                        title="Eliminar"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        {/each}
+                    {:else}
+                        <tr>
+                            <td colspan="8" class="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-500">
+                                No hay calificaciones registradas para este alumno.
+                            </td>
+                        </tr>
                     {/if}
-                </div>
-            {:else}
-                <div class="no-records-message">
-                    <p>Cargando historial o no hay registros académicos disponibles.</p>
-                </div>
-            {/each}
+                </tbody>
+            </table>
         </div>
-
     </div>
 </div>
 
-<style>
-    /* VARIABLES DE COLOR para correlatividad con StudentApp (azul, gris, blanco) */
-    :root {
-        --primary-color: #3f51b5; /* Azul Índigo */
-        --secondary-color: #4CAF50; /* Verde, para Aprobado */
-        --danger-color: #F44336; /* Rojo, para Desaprobado */
-        --header-bg: #4092ff; /* Azul de cabecera de tabla */
-        --text-color: #333;
-        --light-bg: #f9f9f9;
-        --border-color: #ddd;
-    }
+<!-- Modal para Subir Nueva Calificación (Acción: subir) -->
+{#if isSubirModalOpen}
+    <div 
+        class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4"
+        transition:fade
+    >
+        <div 
+            class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6"
+            transition:blur
+            role="dialog"
+            aria-modal="true"
+        >
+            <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Subir Nueva Calificación</h2>
+            
+            {#if form && form.error && action === 'subir'}
+                <div class="mb-4 p-3 text-sm text-red-800 rounded-lg bg-red-50">Error: {form.error}</div>
+            {/if}
 
-    /* Diseño General del Contenedor */
-    .page-container {
-        padding: 20px;
-        min-height: 100vh;
-        background-color: var(--light-bg); /* Fondo gris claro */
-    }
+            <form method="POST" action="?/subir" use:enhance>
+                <!-- ID ALUMNO OCULTO Y AUTOMÁTICO -->
+                <input type="hidden" name="id_alumno" value={userId} />
 
-    .content-card {
-        max-width: 900px;
-        margin: 0 auto;
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        padding: 30px;
-    }
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- ID Materia -->
+                    <div class="md:col-span-2">
+                        <label for="id_materia_subir" class="block text-sm font-medium text-gray-700">ID Materia (UUID)</label>
+                        <input
+                            id="id_materia_subir"
+                            name="id_materia"
+                            type="text"
+                            required
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.id_materia ? 'border-red-500' : ''}"
+                            placeholder="e.g., e5f6g7h8-..."
+                        />
+                        {#if errors.id_materia}<p class="mt-1 text-xs text-red-500">{errors.id_materia}</p>{/if}
+                    </div>
 
-    .page-title {
-        font-size: 28px;
-        font-weight: 700;
-        color: var(--text-color);
-        border-bottom: 3px solid var(--primary-color);
-        padding-bottom: 10px;
-        margin-bottom: 25px;
-    }
+                    <!-- Profesor -->
+                    <div>
+                        <label for="profesor_subir" class="block text-sm font-medium text-gray-700">Profesor</label>
+                        <input
+                            id="profesor_subir"
+                            name="profesor"
+                            type="text"
+                            required
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.profesor ? 'border-red-500' : ''}"
+                            placeholder="Nombre del Profesor"
+                        />
+                        {#if errors.profesor}<p class="mt-1 text-xs text-red-500">{errors.profesor}</p>{/if}
+                    </div>
 
-    /* Bloque de Información del Estudiante */
-    .student-info-block {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        background-color: #e8f0fe; /* Azul muy claro para destacar */
-        border: 1px solid #c5d7f8;
-        padding: 15px 20px;
-        border-radius: 6px;
-        margin-bottom: 30px;
-        font-size: 16px;
-    }
+                    <!-- Año de Cursada -->
+                    <div>
+                        <label for="anio_cursada_subir" class="block text-sm font-medium text-gray-700">Año de Cursada (YYYY-MM-DD)</label>
+                        <input
+                            id="anio_cursada_subir"
+                            name="año_de_cursada"
+                            type="date"
+                            required
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.año_de_cursada ? 'border-red-500' : ''}"
+                        />
+                        {#if errors.año_de_cursada}<p class="mt-1 text-xs text-red-500">{errors.año_de_cursada}</p>{/if}
+                    </div>
 
-    .info-item {
-        color: var(--text-color);
-        font-weight: 500;
-        margin: 5px 0;
-    }
+                    <!-- Nota 1er Cuatri -->
+                    <div>
+                        <label for="nota_1_subir" class="block text-sm font-medium text-gray-700">Nota 1er Cuatri (0-10)</label>
+                        <input
+                            id="nota_1_subir"
+                            name="nota_primer_cuatri"
+                            type="number"
+                            min="0"
+                            max="10"
+                            step="0.01"
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.nota_primer_cuatri ? 'border-red-500' : ''}"
+                        />
+                        {#if errors.nota_primer_cuatri}<p class="mt-1 text-xs text-red-500">{errors.nota_primer_cuatri}</p>{/if}
+                    </div>
 
-    .info-value {
-        font-weight: 700;
-        color: var(--primary-color);
-    }
+                    <!-- Nota 2do Cuatri -->
+                    <div>
+                        <label for="nota_2_subir" class="block text-sm font-medium text-gray-700">Nota 2do Cuatri (0-10)</label>
+                        <input
+                            id="nota_2_subir"
+                            name="nota_segundo_cuatri"
+                            type="number"
+                            min="0"
+                            max="10"
+                            step="0.01"
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.nota_segundo_cuatri ? 'border-red-500' : ''}"
+                        />
+                        {#if errors.nota_segundo_cuatri}<p class="mt-1 text-xs text-red-500">{errors.nota_segundo_cuatri}</p>{/if}
+                    </div>
+                </div>
+                
+                <!-- Estado de Materia -->
+                <div class="mt-4">
+                    <label for="estado_materia_subir" class="block text-sm font-medium text-gray-700">Estado de Materia</label>
+                    <select
+                        id="estado_materia_subir"
+                        name="estado_materia"
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.estado_materia ? 'border-red-500' : ''}"
+                    >
+                        {#each estadoOpciones as estado}
+                            <option value={estado}>{estado.charAt(0).toUpperCase() + estado.slice(1)}</option>
+                        {/each}
+                    </select>
+                    {#if errors.estado_materia}<p class="mt-1 text-xs text-red-500">{errors.estado_materia}</p>{/if}
+                </div>
 
-    .info-value-secondary {
-        font-weight: 600;
-        color: #666;
-    }
-    
-    @media (min-width: 640px) {
-        .student-info-block {
-            flex-direction: row;
-        }
-    }
 
-    /* Estilos del Acordeón (Agrupación por Año) */
-    .year-group {
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        margin-bottom: 15px;
-        overflow: hidden;
-        transition: box-shadow 0.3s ease;
-    }
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button
+                        type="button"
+                        on:click={() => (isSubirModalOpen = false)}
+                        class="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition duration-150"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        class="px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md"
+                    >
+                        Guardar Calificación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{/if}
 
-    .year-group:hover {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    }
+<!-- Modal para Editar Calificación (Acción: editar) -->
+{#if isEditModalOpen && currentEditData}
+    <div 
+        class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4"
+        transition:fade
+    >
+        <div 
+            class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6"
+            transition:blur
+            role="dialog"
+            aria-modal="true"
+        >
+            <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Editar Calificación</h2>
+            
+            {#if form && form.error && action === 'editar'}
+                <div class="mb-4 p-3 text-sm text-red-800 rounded-lg bg-red-50">Error: {form.error}</div>
+            {/if}
 
-    .year-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        padding: 15px 20px;
-        background-color: #f0f4ff; /* Fondo ligeramente azul */
-        color: var(--primary-color);
-        border: none;
-        cursor: pointer;
-        font-size: 18px;
-        font-weight: 600;
-        text-align: left;
-        transition: background-color 0.2s;
-        border-bottom: 1px solid var(--border-color);
-    }
+            <form method="POST" action="?/editar" use:enhance>
+                <!-- IDs de control, se mantienen ocultos -->
+                <input type="hidden" name="id" value={currentEditData.id} />
+                <input type="hidden" name="id_alumno" value={currentEditData.id_alumno} />
+                <input type="hidden" name="id_materia" value={currentEditData.id_materia} />
 
-    .year-header:hover {
-        background-color: #e6ecff;
-    }
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Profesor -->
+                    <div>
+                        <label for="profesor_edit" class="block text-sm font-medium text-gray-700">Profesor</label>
+                        <input
+                            id="profesor_edit"
+                            name="profesor"
+                            type="text"
+                            bind:value={currentEditData.profesor}
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.profesor ? 'border-red-500' : ''}"
+                        />
+                        {#if errors.profesor}<p class="mt-1 text-xs text-red-500">{errors.profesor}</p>{/if}
+                    </div>
 
-    .toggle-icon {
-        width: 24px;
-        height: 24px;
-        transition: transform 0.3s;
-        color: var(--primary-color);
-    }
+                    <!-- Año de Cursada -->
+                    <div>
+                        <label for="anio_cursada_edit" class="block text-sm font-medium text-gray-700">Año de Cursada (YYYY-MM-DD)</label>
+                        <input
+                            id="anio_cursada_edit"
+                            name="año_de_cursada"
+                            type="date"
+                            bind:value={currentEditData.año_de_cursada}
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.año_de_cursada ? 'border-red-500' : ''}"
+                        />
+                        {#if errors.año_de_cursada}<p class="mt-1 text-xs text-red-500">{errors.año_de_cursada}</p>{/if}
+                    </div>
 
-    .rotate-180 {
-        transform: rotate(180deg);
-    }
+                    <!-- Nota 1er Cuatri -->
+                    <div>
+                        <label for="nota_1_edit" class="block text-sm font-medium text-gray-700">Nota 1er Cuatri (0-10)</label>
+                        <input
+                            id="nota_1_edit"
+                            name="nota_primer_cuatri"
+                            type="number"
+                            min="0"
+                            max="10"
+                            step="0.01"
+                            bind:value={currentEditData.nota_primer_cuatri}
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.nota_primer_cuatri ? 'border-red-500' : ''}"
+                        />
+                        {#if errors.nota_primer_cuatri}<p class="mt-1 text-xs text-red-500">{errors.nota_primer_cuatri}</p>{/if}
+                    </div>
 
-    .year-content {
-        padding: 0;
-        background-color: #fff;
-        border-top: 1px solid #eee;
-    }
+                    <!-- Nota 2do Cuatri -->
+                    <div>
+                        <label for="nota_2_edit" class="block text-sm font-medium text-gray-700">Nota 2do Cuatri (0-10)</label>
+                        <input
+                            id="nota_2_edit"
+                            name="nota_segundo_cuatri"
+                            type="number"
+                            min="0"
+                            max="10"
+                            step="0.01"
+                            bind:value={currentEditData.nota_segundo_cuatri}
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.nota_segundo_cuatri ? 'border-red-500' : ''}"
+                        />
+                        {#if errors.nota_segundo_cuatri}<p class="mt-1 text-xs text-red-500">{errors.nota_segundo_cuatri}</p>{/if}
+                    </div>
+                </div>
+                
+                <!-- Estado de Materia -->
+                <div class="mt-4">
+                    <label for="estado_materia_edit" class="block text-sm font-medium text-gray-700">Estado de Materia</label>
+                    <select
+                        id="estado_materia_edit"
+                        name="estado_materia"
+                        bind:value={currentEditData.estado_materia}
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border {errors.estado_materia ? 'border-red-500' : ''}"
+                    >
+                        {#each estadoOpciones as estado}
+                            <option value={estado}>{estado.charAt(0).toUpperCase() + estado.slice(1)}</option>
+                        {/each}
+                    </select>
+                    {#if errors.estado_materia}<p class="mt-1 text-xs text-red-500">{errors.estado_materia}</p>{/if}
+                </div>
 
-    /* Estilos de la Tabla de Calificaciones */
-    .grades-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
 
-    .grades-thead {
-        background-color: var(--header-bg); /* Azul oscuro, similar a las cabeceras de tabla de la StudentApp */
-    }
-
-    .table-th {
-        padding: 12px 15px;
-        text-align: left;
-        font-size: 13px;
-        font-weight: 600;
-        color: #fff;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .table-row:nth-child(even) {
-        background-color: #fcfcfc;
-    }
-    
-    .table-row:hover {
-        background-color: #f5f5f5;
-    }
-
-    .table-td {
-        padding: 10px 15px;
-        font-size: 14px;
-        color: var(--text-color);
-        border-bottom: 1px solid #f0f0f0;
-    }
-
-    /* Estilos de Estado */
-    .status-cell {
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-
-    .status-approved {
-        color: var(--secondary-color); /* Verde */
-    }
-
-    .status-failed {
-        color: var(--danger-color); /* Rojo */
-    }
-
-    /* Responsive */
-    .hidden-sm {
-        display: none;
-    }
-
-    @media (min-width: 768px) {
-        .hidden-sm {
-            display: table-cell;
-        }
-    }
-
-    .no-records-message {
-        text-align: center;
-        padding: 40px;
-        background-color: #fff;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        color: #777;
-        font-size: 16px;
-    }
-</style>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button
+                        type="button"
+                        on:click={() => (isEditModalOpen = false)}
+                        class="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition duration-150"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        class="px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md"
+                    >
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{/if}

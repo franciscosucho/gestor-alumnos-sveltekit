@@ -17,11 +17,6 @@
             icon: "fas fa-book-open",
             link: "/cursos",
         },
-        {
-            name: "Historial Académico",
-            icon: "fas fa-history",
-            link: "alumnos/historial",
-        },
     ];
 
     const colors = {

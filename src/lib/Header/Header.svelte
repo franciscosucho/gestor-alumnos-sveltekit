@@ -7,7 +7,6 @@
 
 <header>
     <Logo></Logo>
-    <Search></Search>
     <Navbar></Navbar>
 </header>
 
@@ -15,10 +14,11 @@
     header{
         width: 100vw;
         height: 8vh;
+        padding: 0px 20px;
         background-color: #ffffff9f;
         border-bottom: 1px solid rgba(51, 51, 51, 0.397);
         display: flex;
-        justify-content: space-around;
+        justify-content: space-between;
         align-items: center;
     }
 

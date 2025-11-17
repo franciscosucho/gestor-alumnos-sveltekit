@@ -4,7 +4,6 @@
     import Textprincipal from "$lib/Main/TextPrincipal.svelte";
     import ContCard from "$lib/Main/ContCard.svelte";
     import ContNavegacion from "$lib/Main/Navegacion/ContNavegacion.svelte";
-    console.log(data);  
 </script>
 
 <!-- <ul>
