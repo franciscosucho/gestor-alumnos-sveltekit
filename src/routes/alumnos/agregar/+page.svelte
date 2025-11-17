@@ -158,7 +158,7 @@
 
     h1 {
         font-size: 2.2em;
-        font-weight: 400; /* Un poco más de peso para presencia */
+        font-weight: 400; 
         margin: 0;
         color: #333;
     }
@@ -168,29 +168,25 @@
         font-size: 1.05em;
     }
 
-    /* ------------------------------ */
-    /* DISEÑO DE FORMULARIO */
-    /* ------------------------------ */
+  
     .form-row {
         display: flex;
-        gap: 25px; /* Más espacio entre campos */
+        gap: 25px; 
         margin-bottom: 20px;
     }
 
-    /* ------------------------------ */
-    /* GRUPO DE INPUTS (ETIQUETA FLOTANTE) */
-    /* ------------------------------ */
+
     .input-group {
         flex: 1;
         position: relative;
-        padding-top: 20px; /* Espacio para la etiqueta flotante */
+        padding-top: 20px; 
     }
 
     .input-group input,
     .input-group select {
         width: 100%;
         padding: 12px 10px;
-        background-color: #f7f9fc; /* Fondo claro para destacar */
+        background-color: #f7f9fc; 
         border: 1px solid #e0e0e0;
         border-radius: 6px;
         font-size: 16px;
@@ -198,25 +194,25 @@
         transition:
             border-color 0.2s,
             background-color 0.2s;
-        box-sizing: border-box; /* Incluir padding y border en el ancho/alto */
+        box-sizing: border-box; 
     }
 
     .input-group input:focus,
     .input-group select:focus {
         outline: none;
-        border-color: #007bff; /* Resaltar con color primario */
+        border-color: #007bff; 
         background-color: #ffffff;
         box-shadow: 0 0 0 1px #007bff;
     }
 
-    /* Etiqueta flotante */
+    
     .input-group label {
         position: absolute;
-        top: 28px; /* Posición inicial: dentro del input */
+        top: 28px; 
         left: 10px;
         color: #999;
         font-size: 16px;
-        pointer-events: none; /* No interfiere con la selección del input */
+        pointer-events: none; 
         transition:
             top 0.2s,
             font-size 0.2s,
@@ -228,7 +224,7 @@
     .input-group input:not(:placeholder-shown) + label,
     .input-group select:focus + label,
     .input-group select:not([value=""]) + label {
-        top: 0px; /* Posición final: arriba */
+        top: 0px;
         font-size: 12px;
         color: #007bff;
         font-weight: 600;
@@ -238,15 +234,12 @@
         z-index: 10;
     }
 
-    /* Ajuste especial para el select, ya que el value="" es la opción disabled */
     .input-group select {
-        /* Oculta la flecha por defecto en algunos navegadores para controlarla via CSS si fuera necesario */
+       
         -webkit-appearance: none;
         -moz-appearance: none;
         appearance: none;
     }
-
-    /* ESTILO ESPECÍFICO DEL DATE PICKER */
     .date-picker-group {
         position: relative;
     }
@@ -255,19 +248,16 @@
         right: 15px;
         top: 30px;
         color: #999;
-        width: 20px; /* Tamaño del icono */
+        width: 20px;
         height: 20px;
         pointer-events: none;
     }
-    /* Ocultar el icono por defecto del navegador en input type="date" */
+   
     input[type="date"]::-webkit-calendar-picker-indicator {
         opacity: 0;
         cursor: pointer;
     }
 
-    /* ------------------------------ */
-    /* BOTONES */
-    /* ------------------------------ */
     .action-buttons-row {
         display: flex;
         justify-content: flex-end;
@@ -278,7 +268,7 @@
     .btn-primary,
     .btn-secondary {
         padding: 12px 25px;
-        border-radius: 8px; /* Bordes más suaves */
+        border-radius: 8px;
         cursor: pointer;
         font-weight: 600;
         letter-spacing: 0.5px;
@@ -288,7 +278,7 @@
     }
 
     .btn-primary {
-        /* Color primario (tomado del logo SA) */
+        
         background-color: #007bff;
         color: white;
         border: none;

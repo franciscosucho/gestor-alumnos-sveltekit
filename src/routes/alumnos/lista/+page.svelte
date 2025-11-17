@@ -319,7 +319,7 @@
 {/if}
 
 <style>
-	/* Estilos copiados del original */
+
 
 	.cont_form {
 		background: #fff;
@@ -458,7 +458,7 @@
 		padding: 12px 15px;
 		text-align: left;
 		border: none;
-		position: relative; /* Necesario para el popup de confirmación */
+		position: relative; 
 	}
 
 	.tabla-alumnos th {
@@ -576,8 +576,6 @@
 		font-weight: 600;
 	}
 
-	/* --- Estilos para el Manejo de Errores y Confirmación --- */
-
 	.mensaje-error {
 		background-color: #f9dcdc;
 		color: #c0392b;
@@ -605,31 +603,31 @@
 		transform: rotate(90deg);
 	}
 
-	/* Popup de Confirmación (Alternativa a Modal completo) */
-	.confirmacion-popup {
-		/* 2. Posicionamiento fijo para que no se mueva con el scroll, o absoluto para que quede en la celda */
-		position: absolute;
-		z-index: 10; /* Z-index menor que antes, 10 es suficiente para estar sobre la tabla */
 
-		/* 3. Posicionamiento para centrarlo horizontalmente */
+	.confirmacion-popup {
+			
+		position: absolute;
+		z-index: 10; 	
+
+		
 		top: 50%;
 		left: 30%;
 		transform: translate(
 			-50%,
 			-50%
-		); /* Centra el elemento respecto a sí mismo */
+		); 
 
-		/* 4. Estilos visuales */
+	
 		background: #fff;
-		border: 2px solid #e74c3c; /* Borde más visible */
+		border: 2px solid #e74c3c; 
 		border-radius: 10px;
-		padding: 20px; /* Más espacio interno */
-		box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); /* Sombra más fuerte */
+		padding: 20px; 
+		box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); 
 
 		min-width: 280px;
 		text-align: center;
 
-		/* 5. Asegura que el popup no se salga del borde de la pantalla */
+	
 		max-width: 90vw;
 	}
 
@@ -640,8 +638,8 @@
 	}
 
 	.confirmacion-popup button {
-		margin: 0 5px; /* Separación entre botones */
-		/* Usamos los estilos existentes para los botones Eliminar (rojo) y Cancelar (gris) */
+		margin: 0 5px; 
+		
 	}
 	.confirmar-si {
 		background-color: #e74c3c;

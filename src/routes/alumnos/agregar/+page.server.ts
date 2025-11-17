@@ -40,7 +40,7 @@ export const actions: Actions = {
 		};
 
 
-		// Validaciones
+		
 		if (!alumno.nombres || !alumno.apellidos || !alumno.dni || !alumno.email || !alumno.curso) {
 			return fail(400, { error: 'Todos los campos obligatorios deben estar completos.' });
 		}

@@ -2,11 +2,9 @@ import { fail, error } from '@sveltejs/kit';
 import { supabase } from '$lib/supabaseClient';
 import type { PageServerLoad, Actions } from './$types';
 
-/**
- * Carga inicial de alumnos desde Supabase
- */
+
 export const load: PageServerLoad = async () => {
-    // Consulta a la tabla 'alumno' y une con la tabla 'curso' (opcional)
+
     const { data: alumnos, error: fetchError } = await supabase
         .from('alumno')
         .select(`
@@ -59,9 +57,7 @@ export const actions: Actions = {
         return { success: true, message: 'Alumno eliminado correctamente.' };
     },
 
-    /**
-     * Acción para editar datos de un alumno existente
-     */
+   
     editar: async ({ request }) => {
         const form = await request.formData();
         const id = form.get('id') as string;

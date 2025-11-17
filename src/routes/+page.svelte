@@ -6,11 +6,6 @@
     import ContNavegacion from "$lib/Main/Navegacion/ContNavegacion.svelte";
 </script>
 
-<!-- <ul>
-    {#each data.instruments as instrument}
-        <li>{instrument.name}</li>
-    {/each}
-</ul> -->
 
 <main>
     <Textprincipal></Textprincipal>

@@ -4,52 +4,50 @@
     import { page } from '$app/stores';
     import { fade, blur } from 'svelte/transition';
 
-    // Datos cargados inicialmente desde +page.server.ts
     export let data;
-    // Resultado de la última acción del servidor (subir/editar/eliminar)
+
     export let form;
 
     let isSubirModalOpen = false;
     let isEditModalOpen = false;
-    let currentEditData = null; // Datos de la calificación que se está editando
+    let currentEditData = null; 
 
-    // 1. OBTENER ID DEL USUARIO ACTUAL AUTOMÁTICAMENTE (CORRECCIÓN)
+    let isDeleteModalOpen = false;
+    let deleteTargetId = null; 
+
     let userId;
-    // Se usa una declaración reactiva ($:) para asegurar que el valor se obtiene correctamente
-    // de la tienda $page, evitando el error de importación al cargar el módulo.
+
     $: userId = $page.data.userId || 'ID_DE_USUARIO_NO_DISPONIBLE'; 
 
-    // Maneja la visualización de errores de formularios
     $: errors = form?.errors || {};
     $: action = form?.action || null;
 
-    // Controla si se debe mostrar un mensaje de éxito
     $: successMessage = '';
     $: if (form?.success) {
         if (action === 'subir') successMessage = 'Calificación subida con éxito.';
         if (action === 'editar') successMessage = 'Calificación actualizada con éxito.';
         if (action === 'eliminar') successMessage = 'Calificación eliminada con éxito.';
-
-        // Cierra modales en caso de éxito
-        isSubirModalOpen = false;
+      isSubirModalOpen = false;
         isEditModalOpen = false;
+        isDeleteModalOpen = false;
         
-        // Limpia el mensaje de éxito después de 3 segundos
+    
         setTimeout(() => (successMessage = ''), 3000);
     }
 
     /**
-     * Abre el modal de edición y carga los datos del registro seleccionado.
-     * @param {Object} calificacion - El objeto de calificación a editar.
+
+     * @param {Object} calificacion -
      */
     function openEditModal(calificacion) {
         currentEditData = {
-            // Aseguramos que el ID del alumno (que debe ser el mismo que userId) se mantenga
+           
             id: calificacion.id,
             id_alumno: calificacion.id_alumno, 
             id_materia: calificacion.id_materia,
             profesor: calificacion.profesor,
-            año_de_cursada: calificacion.año_de_cursada.split('T')[0], // Formato YYYY-MM-DD
+     
+            año_de_cursada: calificacion.año_de_cursada.split('T')[0], 
             estado_materia: calificacion.estado_materia || 'pendiente',
             nota_primer_cuatri: calificacion.nota_primer_cuatri,
             nota_segundo_cuatri: calificacion.nota_segundo_cuatri
@@ -58,23 +56,16 @@
     }
 
     /**
-     * Envía la acción de eliminación al backend.
-     * @param {string} id - El ID del registro a eliminar.
+     
+     * @param {string} id 
      */
-    function handleDelete(id) {
-        // En este entorno, enviamos la solicitud directamente sin confirmación modal.
-        const formData = new FormData();
-        formData.append('id', id);
-        
-        // Simular el submit del formulario de eliminación
-        fetch('?/eliminar', {
-            method: 'POST',
-            body: formData
-        });
+    function openDeleteModal(id) {
+        deleteTargetId = id;
+        isDeleteModalOpen = true;
     }
 
-    // Opciones estáticas para el campo estado_materia
-    const estadoOpciones = ['pendiente', 'aprobada', 'reprobada'];
+   
+    const estadoOpciones = ['Aprobada', 'Intensificación', 'Recursar'];
 </script>
 
 <svelte:head>
@@ -86,7 +77,7 @@
             background-color: #f4f6f8;
         }
         .scroll-container {
-            max-height: calc(100vh - 200px); /* Ajusta la altura máxima para no desbordar */
+            max-height: calc(100vh - 200px); 
         }
     </style>
 </svelte:head>
@@ -102,12 +93,12 @@
         </button>
     </header>
 
-    <!-- Indicador de Usuario Actual (Solo informativo en el frontend) -->
+
     <div class="mb-4 text-sm text-gray-600 p-3 bg-gray-100 rounded-lg shadow-sm">
         Visualizando calificaciones para el ID de alumno: <span class="font-mono font-semibold text-gray-800 break-all">{userId}</span>
     </div>
 
-    <!-- Mensaje de Éxito Global -->
+  
     {#if successMessage}
         <div 
             in:fade="{{ duration: 200 }}" 
@@ -118,8 +109,8 @@
         </div>
     {/if}
 
-    <!-- Mensaje de Error Global -->
-    {#if form && form.error && action !== 'subir' && action !== 'editar'}
+ 
+    {#if form && form.error && action !== 'subir' && action !== 'editar' && action !== 'eliminar'}
         <div 
             in:fade="{{ duration: 200 }}" 
             out:fade="{{ duration: 200 }}"
@@ -129,7 +120,7 @@
         </div>
     {/if}
 
-    <!-- Sección de Calificaciones Existentes -->
+
     <div class="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-200">
         <div class="scroll-container overflow-y-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -147,7 +138,6 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     {#if data.error}
-                        <!-- CORRECCIÓN DE ERROR DE SINTAXIS: Se encadena la verificación de error con la visualización de datos. -->
                         <tr>
                             <td colspan="8" class="px-4 py-3 whitespace-nowrap text-center text-sm text-red-500 font-medium">
                                 Error al cargar datos: {data.error}
@@ -200,7 +190,7 @@
                                         </svg>
                                     </button>
                                     <button 
-                                        on:click={() => handleDelete(calificacion.id)}
+                                        on:click={() => openDeleteModal(calificacion.id)}
                                         class="text-red-600 hover:text-red-900 mx-2"
                                         title="Eliminar"
                                     >
@@ -224,7 +214,7 @@
     </div>
 </div>
 
-<!-- Modal para Subir Nueva Calificación (Acción: subir) -->
+
 {#if isSubirModalOpen}
     <div 
         class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4"
@@ -243,11 +233,11 @@
             {/if}
 
             <form method="POST" action="?/subir" use:enhance>
-                <!-- ID ALUMNO OCULTO Y AUTOMÁTICO -->
+      
                 <input type="hidden" name="id_alumno" value={userId} />
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- ID Materia -->
+                    
                     <div class="md:col-span-2">
                         <label for="id_materia_subir" class="block text-sm font-medium text-gray-700">ID Materia (UUID)</label>
                         <input
@@ -261,7 +251,7 @@
                         {#if errors.id_materia}<p class="mt-1 text-xs text-red-500">{errors.id_materia}</p>{/if}
                     </div>
 
-                    <!-- Profesor -->
+               
                     <div>
                         <label for="profesor_subir" class="block text-sm font-medium text-gray-700">Profesor</label>
                         <input
@@ -275,7 +265,6 @@
                         {#if errors.profesor}<p class="mt-1 text-xs text-red-500">{errors.profesor}</p>{/if}
                     </div>
 
-                    <!-- Año de Cursada -->
                     <div>
                         <label for="anio_cursada_subir" class="block text-sm font-medium text-gray-700">Año de Cursada (YYYY-MM-DD)</label>
                         <input
@@ -288,7 +277,6 @@
                         {#if errors.año_de_cursada}<p class="mt-1 text-xs text-red-500">{errors.año_de_cursada}</p>{/if}
                     </div>
 
-                    <!-- Nota 1er Cuatri -->
                     <div>
                         <label for="nota_1_subir" class="block text-sm font-medium text-gray-700">Nota 1er Cuatri (0-10)</label>
                         <input
@@ -303,7 +291,7 @@
                         {#if errors.nota_primer_cuatri}<p class="mt-1 text-xs text-red-500">{errors.nota_primer_cuatri}</p>{/if}
                     </div>
 
-                    <!-- Nota 2do Cuatri -->
+                    
                     <div>
                         <label for="nota_2_subir" class="block text-sm font-medium text-gray-700">Nota 2do Cuatri (0-10)</label>
                         <input
@@ -319,7 +307,7 @@
                     </div>
                 </div>
                 
-                <!-- Estado de Materia -->
+         
                 <div class="mt-4">
                     <label for="estado_materia_subir" class="block text-sm font-medium text-gray-700">Estado de Materia</label>
                     <select
@@ -355,7 +343,7 @@
     </div>
 {/if}
 
-<!-- Modal para Editar Calificación (Acción: editar) -->
+
 {#if isEditModalOpen && currentEditData}
     <div 
         class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4"
@@ -374,13 +362,13 @@
             {/if}
 
             <form method="POST" action="?/editar" use:enhance>
-                <!-- IDs de control, se mantienen ocultos -->
+           
                 <input type="hidden" name="id" value={currentEditData.id} />
                 <input type="hidden" name="id_alumno" value={currentEditData.id_alumno} />
                 <input type="hidden" name="id_materia" value={currentEditData.id_materia} />
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Profesor -->
+                 
                     <div>
                         <label for="profesor_edit" class="block text-sm font-medium text-gray-700">Profesor</label>
                         <input
@@ -393,7 +381,7 @@
                         {#if errors.profesor}<p class="mt-1 text-xs text-red-500">{errors.profesor}</p>{/if}
                     </div>
 
-                    <!-- Año de Cursada -->
+               
                     <div>
                         <label for="anio_cursada_edit" class="block text-sm font-medium text-gray-700">Año de Cursada (YYYY-MM-DD)</label>
                         <input
@@ -406,7 +394,7 @@
                         {#if errors.año_de_cursada}<p class="mt-1 text-xs text-red-500">{errors.año_de_cursada}</p>{/if}
                     </div>
 
-                    <!-- Nota 1er Cuatri -->
+           
                     <div>
                         <label for="nota_1_edit" class="block text-sm font-medium text-gray-700">Nota 1er Cuatri (0-10)</label>
                         <input
@@ -422,7 +410,6 @@
                         {#if errors.nota_primer_cuatri}<p class="mt-1 text-xs text-red-500">{errors.nota_primer_cuatri}</p>{/if}
                     </div>
 
-                    <!-- Nota 2do Cuatri -->
                     <div>
                         <label for="nota_2_edit" class="block text-sm font-medium text-gray-700">Nota 2do Cuatri (0-10)</label>
                         <input
@@ -438,8 +425,7 @@
                         {#if errors.nota_segundo_cuatri}<p class="mt-1 text-xs text-red-500">{errors.nota_segundo_cuatri}</p>{/if}
                     </div>
                 </div>
-                
-                <!-- Estado de Materia -->
+             
                 <div class="mt-4">
                     <label for="estado_materia_edit" class="block text-sm font-medium text-gray-700">Estado de Materia</label>
                     <select
@@ -469,6 +455,49 @@
                         class="px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md"
                     >
                         Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{/if}
+
+
+{#if isDeleteModalOpen && deleteTargetId}
+    <div 
+        class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4"
+        transition:fade
+    >
+        <div 
+            class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6"
+            transition:blur
+            role="dialog"
+            aria-modal="true"
+        >
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Confirmar Eliminación</h2>
+            
+            {#if form && form.error && action === 'eliminar'}
+                <div class="mb-4 p-3 text-sm text-red-800 rounded-lg bg-red-50">Error de Eliminación: {form.error}</div>
+            {/if}
+
+            <p class="mb-6 text-gray-600">¿Estás seguro de que quieres eliminar esta calificación? Esta acción es irreversible.</p>
+
+ 
+            <form method="POST" action="?/eliminar" use:enhance>
+                <input type="hidden" name="id" value={deleteTargetId} />
+                <div class="flex justify-end space-x-3">
+                    <button
+                        type="button"
+                        on:click={() => (isDeleteModalOpen = false)}
+                        class="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition duration-150"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        class="px-4 py-2 text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 transition duration-150 shadow-md"
+                    >
+                        Sí, Eliminar
                     </button>
                 </div>
             </form>
