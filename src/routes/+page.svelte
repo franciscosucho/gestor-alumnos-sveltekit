@@ -9,7 +9,7 @@
 
 <main>
     <Textprincipal></Textprincipal>
-    <ContCard></ContCard>
+ 
     <ContNavegacion></ContNavegacion>
 </main>
 
