@@ -5,7 +5,7 @@ import type { PageServerLoad, Actions } from './$types';
 
 // Importar el cliente base de Supabase
 import { createClient } from '@supabase/supabase-js';
-
+import { addLog } from '$lib/funtions/addlog';
 
 let VITE_SUPABASE_URL = 'https://iuczwhplovsujjwlbzko.supabase.co'
 let VITE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1Y3p3aHBsb3ZzdWpqd2xiemtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzMzcwODgsImV4cCI6MjA3NjkxMzA4OH0.T5L1NzxqQ0D8iVGxRLMpTQvrQweYuwNe4gZE-MvA1Nw'
@@ -122,7 +122,7 @@ export const actions: Actions = {
 			if (error) {
 				return fail(500, { error: error.message, action: 'subir' });
 			}
-
+			addLog(`Se ha agregado una nueva calificación para el alumno ID: ${data.id_alumno}`, 'CREATE', 'Modulo de gestión de Alumnos');
 			return { success: true, action: 'subir' };
 		} catch (e) {
 			return fail(500, { error: e.message, action: 'subir' });
@@ -152,7 +152,7 @@ export const actions: Actions = {
 			if (error) {
 				return fail(500, { error: error.message, action: 'editar' });
 			}
-
+			addLog(`Se ha editado la calificación ID: ${data.id} del alumno ID: ${data.id_alumno}`, 'UPDATE', 'Modulo de gestión de Alumnos');
 			return { success: true, action: 'editar' };
 		} catch (e) {
 			return fail(500, { error: e.message, action: 'editar' });
@@ -180,10 +180,13 @@ export const actions: Actions = {
 			if (deleteError) {
 				return fail(500, { error: deleteError.message, action: 'eliminar' });
 			}
-
+			addLog(`Se ha eliminado la calificación ID: ${calificacionId}`, 'DELETE', 'Modulo de gestión de Alumnos');
 			return { success: true, action: 'eliminar' };
 		} catch (e) {
 			return fail(500, { error: e.message, action: 'eliminar' });
 		}
 	},
 };
+
+
+

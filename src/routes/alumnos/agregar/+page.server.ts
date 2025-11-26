@@ -3,7 +3,7 @@ import { fail, redirect, type Actions } from '@sveltejs/kit';
 import { supabase } from '$lib/supabaseClient';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-
+import { addLog } from '$lib/funtions/addlog';
 export const load: PageServerLoad = async ({ params }) => {
 	const { data: cursos, error: fetchError } = await supabase
 		.from('curso')
@@ -64,11 +64,10 @@ export const actions: Actions = {
 			console.error("Error al registrar alumno:", error.message);
 			return fail(500, { error: 'Error al registrar el alumno en la base de datos.' });
 		}
-
+		addLog(`Se ha registrado un nuevo alumno: ${alumno.nombres} ${alumno.apellidos}`, 'CREATE', 'Modulo de gestión de Alumnos');
 		console.log("Alumno registrado correctamente.");
 		throw redirect(303, '/alumnos/lista');
 	}
 };
-
 
 

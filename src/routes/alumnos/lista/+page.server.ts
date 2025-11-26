@@ -1,7 +1,7 @@
 import { fail, error } from '@sveltejs/kit';
 import { supabase } from '$lib/supabaseClient';
 import type { PageServerLoad, Actions } from './$types';
-
+import { addLog } from '$lib/funtions/addlog';
 
 export const load: PageServerLoad = async () => {
 
@@ -53,7 +53,7 @@ export const actions: Actions = {
             console.error('Error al eliminar alumno:', deleteError.message);
             return fail(500, { message: 'No se pudo eliminar el alumno.' });
         }
-
+        addLog(`Se ha eliminado el alumno ID: ${id}`, 'DELETE', 'Modulo de gestión de Alumnos');
         return { success: true, message: 'Alumno eliminado correctamente.' };
     },
 
@@ -79,7 +79,7 @@ export const actions: Actions = {
             console.error('Error al editar alumno:', updateError.message);
             return fail(500, { message: 'No se pudo actualizar el alumno.' });
         }
-
+        addLog(`Se ha actualizado el alumno ID: ${id}`, 'UPDATE', 'Modulo de gestión de Alumnos');
         return { success: true, message: 'Alumno actualizado correctamente.' };
     }
 };

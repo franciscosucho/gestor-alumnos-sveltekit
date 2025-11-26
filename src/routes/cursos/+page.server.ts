@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { supabase } from '$lib/supabaseClient';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-
+import { addLog } from '$lib/funtions/addlog';
 export const load: PageServerLoad = async ({ params }) => {
     const { data: cursos, error: fetchError } = await supabase
         .from('curso')
@@ -43,8 +43,8 @@ export const actions = {
         if (error) {
             console.error('Error al agregar curso:', error.message);
             return fail(500, { error: 'Error al guardar el curso en la base de datos.' });
-        }
-
+        }   
+        addLog(`Se ha agregado un nuevo curso: ${curso} - ${turno}`, 'CREATE', 'Modulo de gestión de Alumnos');
         // console.log('Curso agregado correctamente:', curso);
         return { success: true };
     }
@@ -71,6 +71,7 @@ export const actions = {
             console.error('Error al agregar materia:', insertError.message);
             return fail(500, { error: 'Error al guardar la materia.' });
         }
+        addLog(`Se ha agregado una nueva materia: ${nombre} para el curso ID: ${curso_id}`, 'CREATE', 'Modulo de gestión de Alumnos');
         return { success: true };
     },
 
@@ -98,6 +99,7 @@ export const actions = {
             console.error('Error al editar materia:', updateError.message);
             return fail(500, { error: 'Error al actualizar la materia.' });
         }
+        addLog(`Se ha actualizado la materia ID: ${id}`, 'UPDATE', 'Modulo de gestión de Alumnos');
         return { success: true };
     },
 
@@ -116,6 +118,7 @@ export const actions = {
             console.error('Error al eliminar materia:', deleteError.message);
             return fail(500, { error: 'Error al eliminar la materia.' });
         }
+        addLog(`Se ha eliminado la materia ID: ${id}`, 'DELETE', 'Modulo de gestión de Alumnos');
         return { success: true };
     }
 };
