@@ -11,7 +11,7 @@
 
     let filtroCurso = "";
     let filtroMateria = "";
-
+ 
     let mostrarFormCurso = false;
     let mostrarFormMateria = false;
 

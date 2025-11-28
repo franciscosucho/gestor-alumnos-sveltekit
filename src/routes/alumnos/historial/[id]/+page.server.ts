@@ -82,8 +82,17 @@ export const load: PageServerLoad = async ({ params }) => {
 				error: `Error al cargar datos: ${error.message}`
 			};
 		}
-
+		const { data: materias, error: fetchErrormaterias } = await supabase
+			.from('materias')
+			.select('*')
+			.order('nombre', { ascending: true });
+		if (fetchErrormaterias) {
+			console.error('Error al obtener las materias:', fetchErrormaterias.message);
+			throw error(500, 'Error al obtener los cursos.');
+		}
+		console.log("ss",materias)
 		return {
+			data_materias:materias,
 			calificaciones: data,
 			userId: userId
 		};
